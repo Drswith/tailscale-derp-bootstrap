@@ -68,11 +68,11 @@ if bash "$ROOT_DIR/install.sh" derpmap "$ROOT_DIR/config.example.env" >/dev/null
 fi
 
 PUBLIC_IPV4=1.1.1.1
-openssl req -x509 -newkey rsa:2048 -nodes -days 3 -quiet \
+openssl req -x509 -newkey rsa:2048 -nodes -days 3 \
   -subj '/CN=Test Root' -addext 'basicConstraints=critical,CA:TRUE' \
   -addext 'keyUsage=critical,keyCertSign,cRLSign' \
   -keyout "$tmp/root.key" -out "$tmp/root.pem" 2>/dev/null
-openssl req -newkey rsa:2048 -nodes -quiet -subj '/CN=1.1.1.1' \
+openssl req -newkey rsa:2048 -nodes -subj '/CN=1.1.1.1' \
   -keyout "$tmp/leaf.key" -out "$tmp/leaf.csr" 2>/dev/null
 printf 'subjectAltName=IP:1.1.1.1\nextendedKeyUsage=serverAuth\n' > "$tmp/extensions"
 openssl x509 -req -in "$tmp/leaf.csr" -CA "$tmp/root.pem" -CAkey "$tmp/root.key" \
