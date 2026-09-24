@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 source "$ROOT_DIR/bootstrap.sh"
+bash -s -- --help < "$ROOT_DIR/bootstrap.sh" | grep -q '^Usage:'
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
