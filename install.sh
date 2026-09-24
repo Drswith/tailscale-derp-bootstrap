@@ -222,20 +222,23 @@ install_tailscale_package() {
 
 join_tailnet() {
   local status state
+  local -a up_args=(--hostname="$TS_HOSTNAME" --accept-dns=false --accept-routes=false)
+  if [[ -n $TS_ADVERTISE_TAGS ]]; then
+    up_args+=(--advertise-tags="$TS_ADVERTISE_TAGS")
+  fi
   status=$(tailscale status --json 2>/dev/null || true)
   state=$(jq -r '.BackendState // ""' <<<"$status" 2>/dev/null || true)
   if [[ $state != Running ]]; then
     if [[ -n $TS_AUTH_KEY_FILE ]]; then
       [[ -f $TS_AUTH_KEY_FILE && $(stat -c '%a' "$TS_AUTH_KEY_FILE") == 600 ]] \
         || die "Auth key file must exist with mode 0600: $TS_AUTH_KEY_FILE"
-      tailscale up --auth-key="file:$TS_AUTH_KEY_FILE" --hostname="$TS_HOSTNAME" \
-        --accept-dns=false --accept-routes=false
+      tailscale up --auth-key="file:$TS_AUTH_KEY_FILE" "${up_args[@]}"
       if [[ $TS_AUTH_KEY_FILE == /run/derp-bootstrap/auth.key ]]; then
         rm -f -- "$TS_AUTH_KEY_FILE"
       fi
     else
       log "Complete the Tailscale login in the URL printed below."
-      tailscale up --hostname="$TS_HOSTNAME" --accept-dns=false --accept-routes=false
+      tailscale up "${up_args[@]}"
     fi
   fi
   check_tailnet
