@@ -20,21 +20,17 @@ detect_platform() {
       PKG_FAMILY=apt; PKG_OS=ubuntu; DOCKER_AUTO_INSTALL=ubuntu ;;
     debian:12:bookworm|debian:13:trixie)
       PKG_FAMILY=apt; PKG_OS=debian; DOCKER_AUTO_INSTALL=debian ;;
-    fedora:43:*|fedora:44:*)
-      PKG_FAMILY=dnf; PKG_OS=fedora; PKG_REPO_PATH=fedora/tailscale.repo
-      DOCKER_AUTO_INSTALL=fedora ;;
-    rhel:9:*|rhel:9.*:*|rhel:10:*|rhel:10.*:*)
+    rhel:9:*|rhel:9.*:*)
       PKG_FAMILY=dnf; PKG_OS=rhel
-      PKG_REPO_PATH="rhel/${VERSION_ID%%.*}/tailscale.repo"
+      PKG_REPO_PATH=rhel/9/tailscale.repo
       DOCKER_AUTO_INSTALL=rhel ;;
-    rocky:9:*|rocky:9.*:*|rocky:10:*|rocky:10.*:*|\
-    almalinux:9:*|almalinux:9.*:*|almalinux:10:*|almalinux:10.*:*)
+    rocky:9:*|rocky:9.*:*)
       [[ " $ID_LIKE " == *" rhel "* ]] \
         || die "$ID $VERSION_ID does not declare RHEL compatibility in ID_LIKE."
       PKG_FAMILY=dnf; PKG_OS=rhel
-      PKG_REPO_PATH="rhel/${VERSION_ID%%.*}/tailscale.repo" ;;
+      PKG_REPO_PATH=rhel/9/tailscale.repo ;;
     *)
-      die "Unsupported Linux distribution: $ID $VERSION_ID ($VERSION_CODENAME). Supported: Ubuntu 22.04/24.04, Debian 12/13, Fedora 43/44, RHEL/Rocky/AlmaLinux 9/10."
+      die "Unsupported Linux distribution: $ID $VERSION_ID ($VERSION_CODENAME). Supported: Ubuntu 22.04/24.04, Debian 12/13, RHEL 9, Rocky Linux 9."
       ;;
   esac
 

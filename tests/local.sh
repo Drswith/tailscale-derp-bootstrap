@@ -25,12 +25,8 @@ check_platform ubuntu 22.04 jammy '' apt ubuntu ubuntu python3 ''
 check_platform ubuntu 24.04 noble '' apt ubuntu ubuntu python3 ''
 check_platform debian 12 bookworm '' apt debian debian python3 ''
 check_platform debian 13 trixie '' apt debian debian python3 ''
-check_platform fedora 43 '' '' dnf fedora fedora python3 fedora/tailscale.repo
-check_platform fedora 44 '' '' dnf fedora fedora python3 fedora/tailscale.repo
 check_platform rhel 9.6 '' '' dnf rhel rhel python3.11 rhel/9/tailscale.repo
-check_platform rhel 10.1 '' '' dnf rhel rhel python3 rhel/10/tailscale.repo
 check_platform rocky 9.6 '' 'rhel centos fedora' dnf rhel manual python3.11 rhel/9/tailscale.repo
-check_platform almalinux 10.1 '' 'rhel centos fedora' dnf rhel manual python3 rhel/10/tailscale.repo
 check_unsupported_platform() {
   printf 'ID=%s\nVERSION_ID=%s\nVERSION_CODENAME=%s\nID_LIKE="%s"\n' \
     "$1" "$2" "$3" "$4" > "$tmp/os-release"
@@ -40,6 +36,10 @@ check_unsupported_platform() {
 }
 check_unsupported_platform ubuntu 20.04 focal debian
 check_unsupported_platform linuxmint 22 wilma ubuntu
+check_unsupported_platform fedora 44 '' ''
+check_unsupported_platform rhel 10.1 '' ''
+check_unsupported_platform rocky 10.1 '' 'rhel centos fedora'
+check_unsupported_platform almalinux 9.6 '' 'rhel centos fedora'
 check_unsupported_platform unknown 1 '' ''
 
 if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then

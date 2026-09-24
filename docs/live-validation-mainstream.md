@@ -4,11 +4,10 @@
 
 ## 发行版适配的验证边界
 
-- `/etc/os-release` 样例覆盖 Ubuntu 22.04/24.04、Debian 12/13、Fedora 43/44、RHEL 9/10、Rocky Linux 9 与 AlmaLinux 10；Ubuntu 20.04、Linux Mint 和未知系统被拒绝。
-- Debian 13 容器从 Tailscale 官方 APT 源查到锁定的 Tailscale 版本，从 Docker 官方 Debian 源查到 Engine、CLI、containerd、Buildx 与 Compose 包。Fedora 43 容器从 Tailscale 官方 RPM 源查到锁定版本，从 Docker 官方 Fedora 源查到上述五个 Docker 包。
-- Rocky Linux 9 容器从 Tailscale 官方 RHEL 9 RPM 源查到锁定版本，并从系统仓库安装 `python3.11`，在 Python 3.11 虚拟环境内成功安装和运行锁定的 Certbot 5.8.0。另从 Docker 官方 RHEL 源查到五个 Docker 包；本项目仍要求 Rocky/AlmaLinux 宿主机预先装好 Docker，因为没有在这些衍生系统上验证 Docker CE 的完整安装和服务启动。
-- GitHub Actions 的 Ubuntu 24.04 runner 已通过 `tests/local.sh`，并从匹配版本的官方 Go 模块构建 `derper`。首次 CI 运行暴露测试脚本给 Linux `openssl req` 传入不支持的 `-quiet`；移除该参数后，同一测试在 Ubuntu VPS 和 Actions 上均通过。
-- 容器检查验证发行版识别与包仓库元数据，不能代替 systemd、Docker daemon、ACME、公网入口和 DERP 中继的实机验收；四台实机均为 Ubuntu 24.04。
+- 当前只接受 Ubuntu 22.04/24.04、Debian 12/13、RHEL 9 和 Rocky Linux 9。`/etc/os-release` 样例覆盖这六项；Ubuntu 20.04、Fedora、RHEL 10、Rocky Linux 10、AlmaLinux、Linux Mint 和未知系统均被拒绝。此前曾探索这些额外系统的包仓库，不构成当前支持承诺。
+- GitHub Actions 在六种系统的 amd64 容器中调用安装脚本的实际函数，执行基础包安装、Tailscale 软件源配置与锁定包安装、官方 Go 归档下载和 SHA-256 校验、匹配版本 `derper` 构建、锁定版本 Certbot 安装，以及 `tests/local.sh`。Ubuntu、Debian 和 RHEL UBI 9 还安装 Docker CLI、Compose 与 Buildx 并解析 Compose 配置；Rocky Linux 9 检查脚本要求预装 Docker 的明确提示。另一个任务构建 Docker 部署镜像并检查其中的二进制版本。
+- RHEL 9 使用公开的 UBI 9 容器作包命令验证；完整 RHEL 宿主机没有实测。Rocky Linux 9 使用 Tailscale 官方 RHEL 9 RPM 源及 Python 3.11；Docker CE 源不自动添加。容器没有 systemd、Docker daemon、ACME 或 tailnet 凭据，所以该矩阵不运行全链路部署。
+- 四台 Ubuntu 24.04 VPS 的服务、证书、公网入口、tailnet 和真实 DERP 中继实机结果见下文。其他发行版的整机运行仍需在对应宿主机验收。
 
 ## 四台实机
 

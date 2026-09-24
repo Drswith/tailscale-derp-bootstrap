@@ -6,7 +6,7 @@
 
 ## 适用范围和必要条件
 
-- Ubuntu 22.04/24.04、Debian 12/13、Fedora 43/44、RHEL/Rocky Linux/AlmaLinux 9/10；x86_64 或 aarch64，systemd，root 权限，至少 2 GiB 可用磁盘空间。脚本依据 `/etc/os-release` 的发行版和版本选择软件源；未列出的系统会明确拒绝。
+- Ubuntu 22.04/24.04、Debian 12/13、RHEL 9、Rocky Linux 9；x86_64 或 aarch64，systemd，root 权限，至少 2 GiB 可用磁盘空间。脚本依据 `/etc/os-release` 的发行版和版本选择软件源；未列出的系统会明确拒绝。
 - **固定、可从公网访问的 IPv4**。公网 TCP 80 用于首次签发及后续 HTTP-01 续期；TCP 443（或配置的 DERP 端口）用于 DERP；UDP 3478（或配置的 STUN 端口）用于 STUN。保留当前 SSH 端口，并按云厂商和系统规则允许必要的 ICMP 流量。TCP 80 必须在签发/续期时空闲。`derper` 的 HTTP 监听在本方案中关闭，因此不提供该节点的 80 端口 captive portal 检测服务。
 - 可访问 Tailscale 软件源、Go 下载站和模块源、PyPI、Let's Encrypt ACME，以及 Tailscale 控制平面。国内网络如果需要代理，只给公网下载客户端配置当时可用的 `HTTPS_PROXY`，并用 `NO_PROXY` 排除内网、LAN 和服务发现地址；Go 模块可通过 `GOPROXY` 选择可达的镜像源，保持 `GOSUMDB` 校验开启。Go 压缩包也可用 `GO_ARCHIVE_URL` 指向可达镜像，安装时仍按 [versions.lock](versions.lock) 的官方 SHA-256 校验。`sudo` 可能不保留这些环境变量，运行前需检查 apt、curl、Go 各自实际使用的路径。不要把代理密码写入仓库或配置文件。预检会单独尝试直连公网 IP 查询。公网入站是否畅通最终由 ACME 验证与外部客户端测试确认。
 - 管理员能把服务器加入目标 tailnet，并在网页控制台批准设备（如果启用了设备审批）。可首次交互登录，或通过权限为 `0600` 的文件提供一次性 Auth key。另一种无交互方式是为专用 tag 创建仅有 `auth_keys` 权限的 OAuth 客户端，把客户端 secret 放入同一凭据文件，并设置 `TS_ADVERTISE_TAGS`。带 tag 节点的密钥到期策略仍应在控制台核对。
@@ -17,11 +17,10 @@
 | --- | --- | --- |
 | Ubuntu 22.04/24.04 | Tailscale 官方 APT 源 | Ubuntu 的 `docker.io`、`docker-compose-v2` |
 | Debian 12/13 | Tailscale 官方 APT 源 | Docker 官方 Debian CE 源 |
-| Fedora 43/44 | Tailscale 官方 Fedora RPM 源 | Docker 官方 Fedora CE 源 |
-| RHEL 9/10 | Tailscale 官方 RHEL RPM 源 | Docker 官方 RHEL CE 源 |
-| Rocky Linux、AlmaLinux 9/10 | Tailscale 官方 RHEL RPM 源 | 请预先安装可用的 Docker Engine、Compose v2；脚本不自动添加其他发行版的 Docker CE 源 |
+| RHEL 9 | Tailscale 官方 RHEL RPM 源 | Docker 官方 RHEL CE 源 |
+| Rocky Linux 9 | Tailscale 官方 RHEL RPM 源 | 请预先安装可用的 Docker Engine、Compose v2；脚本不自动添加 Rocky 的 Docker CE 源 |
 
-这些系统的选择逻辑已用 `/etc/os-release` 样例检查；本次实机安装覆盖 Ubuntu 24.04。其他发行版的包安装、证书和服务运行仍需在对应系统上验收。RHEL 9 系使用 Python 3.11 来运行当前锁定的 Certbot。
+这些系统的选择逻辑已用 `/etc/os-release` 样例检查；本次实机安装覆盖 Ubuntu 24.04。GitHub Actions 还按下文的发行版矩阵检查包安装与构建命令。其他发行版的 systemd、Docker daemon、证书和 DERP 服务运行仍需在对应宿主机上验收。RHEL 9 系使用 Python 3.11 来运行当前锁定的 Certbot。
 
 ## 裸机部署
 
@@ -70,7 +69,7 @@
 
 ## Docker Compose 部署
 
-Docker 入口见 [docker/deploy.sh](docker/deploy.sh)。缺少 Docker 时按上表安装；Rocky Linux 和 AlmaLinux 需要先提供 Docker Engine 与 Compose v2。镜像从锁定版本的官方 Tailscale 镜像复制 `tailscale`/`tailscaled`，并从同版本的 `tailscale.com/cmd/derper` 构建官方 `derper`。容器使用 Tailscale userspace 模式，不需要主机安装 Tailscale、`/dev/net/tun` 或 privileged 模式。Docker 路径和裸机路径不要同时绑定同一组公网端口。
+Docker 入口见 [docker/deploy.sh](docker/deploy.sh)。缺少 Docker 时按上表安装；Rocky Linux 需要先提供 Docker Engine 与 Compose v2。镜像从锁定版本的官方 Tailscale 镜像复制 `tailscale`/`tailscaled`，并从同版本的 `tailscale.com/cmd/derper` 构建官方 `derper`。容器使用 Tailscale userspace 模式，不需要主机安装 Tailscale、`/dev/net/tun` 或 privileged 模式。Docker 路径和裸机路径不要同时绑定同一组公网端口。
 
 1. 将仓库放到 VPS，复制并编辑 `docker/config.example.env` 为 `docker/config.env`。配置公网 IP、证书邮箱、目标 tailnet、设备名和未占用的 RegionID。示例使用 TCP 52625、UDP 3478；公网 TCP 80 用于 HTTP-01 签发和续期。云安全组和宿主机防火墙需允许这三个入站端口并保留 SSH。该方案不监听 TCP 443，也不提供 DERP 节点的 80 端口 captive portal 检测服务。
 2. 交互登录设 `AUTH_MODE="interactive"`；运行 `sudo bash docker/deploy.sh install docker/config.env` 后，用 `sudo bash docker/deploy.sh logs docker/config.env` 查看登录 URL 并批准设备。全自动登录设 `AUTH_MODE="authkey"`，把一次性、非临时 Auth key 或上述 OAuth 客户端 secret 放到 `docker/secrets/auth.key`，权限为 `0600`；OAuth 方式还需在配置中设置 `TS_ADVERTISE_TAGS`。安装脚本只检查文件，不把凭据放到环境变量或 Docker 元数据；容器成功入网后删除该文件。已入网的节点重启时会从 `docker/state/tailscale` 恢复身份，不再需要凭据。
@@ -109,7 +108,11 @@ Docker 入口见 [docker/deploy.sh](docker/deploy.sh)。缺少 Docker 时按上�
 bash tests/local.sh
 ```
 
-这个测试覆盖发行版识别、配置与 `derpMap` 生成、证书 IP SAN/私钥/有效期校验、证书链接防误指向、Docker 脚本语法和可用时的 Compose 配置解析。GitHub Actions 还会在 Linux 上构建锁定版本的官方 `derper`。每台目标服务器的软件包、Docker/systemd、ACME、公网连通性、tailnet 可见性和客户端中继仍需分别验收；升级失败回滚也需要单独验证。
+这个测试覆盖发行版识别、配置与 `derpMap` 生成、证书 IP SAN/私钥/有效期校验、证书链接防误指向、Docker 脚本语法和可用时的 Compose 配置解析。
+
+GitHub Actions 的 Linux 兼容性矩阵分别在 Ubuntu 22.04/24.04、Debian 12/13、RHEL UBI 9 和 Rocky Linux 9 的 amd64 容器中运行安装脚本的真实命令：安装基础依赖、添加 Tailscale 软件源、安装锁定版本的 Tailscale、校验并安装锁定的 Go、构建匹配版本的 `derper`、安装锁定版本的 Certbot，并运行上述本地检查。Ubuntu、Debian 和 RHEL UBI 9 还安装 Docker CLI、Compose 与 Buildx 并解析 Compose 配置；Rocky Linux 9 检查缺失 Docker 时给出明确的预装提示。另一个任务构建 Docker 部署镜像并检查其中的二进制版本。
+
+这些容器没有 systemd、Docker daemon、ACME 证书或 tailnet 身份，因此矩阵只验收 amd64 包命令与编译构建。每台目标服务器的服务启动、证书签发、公网连通性、tailnet 可见性和客户端中继仍需分别验收；升级失败回滚也需要单独验证。arm64 目前只有平台映射与 Go 下载校验值，未进入该矩阵。
 
 首台测试 VPS 的部署、证书、续期模拟、重启和真实客户端中继结果见[已脱敏的实机验收记录](docs/live-validation-primary.md)。
 
