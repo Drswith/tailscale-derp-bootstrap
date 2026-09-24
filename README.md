@@ -9,7 +9,7 @@
 - Ubuntu 22.04/24.04、Debian 12/13、Fedora 43/44、RHEL/Rocky Linux/AlmaLinux 9/10；x86_64 或 aarch64，systemd，root 权限，至少 2 GiB 可用磁盘空间。脚本依据 `/etc/os-release` 的发行版和版本选择软件源；未列出的系统会明确拒绝。
 - **固定、可从公网访问的 IPv4**。公网 TCP 80 用于首次签发及后续 HTTP-01 续期；TCP 443（或配置的 DERP 端口）用于 DERP；UDP 3478（或配置的 STUN 端口）用于 STUN。保留当前 SSH 端口，并按云厂商和系统规则允许必要的 ICMP 流量。TCP 80 必须在签发/续期时空闲。`derper` 的 HTTP 监听在本方案中关闭，因此不提供该节点的 80 端口 captive portal 检测服务。
 - 可访问 Tailscale 软件源、Go 下载站和模块源、PyPI、Let's Encrypt ACME，以及 Tailscale 控制平面。国内网络如果需要代理，只给公网下载客户端配置当时可用的 `HTTPS_PROXY`，并用 `NO_PROXY` 排除内网、LAN 和服务发现地址；Go 模块可通过 `GOPROXY` 选择可达的镜像源，保持 `GOSUMDB` 校验开启。Go 压缩包也可用 `GO_ARCHIVE_URL` 指向可达镜像，安装时仍按 [versions.lock](versions.lock) 的官方 SHA-256 校验。`sudo` 可能不保留这些环境变量，运行前需检查 apt、curl、Go 各自实际使用的路径。不要把代理密码写入仓库或配置文件。预检会单独尝试直连公网 IP 查询。公网入站是否畅通最终由 ACME 验证与外部客户端测试确认。
-- 管理员能把服务器加入目标 tailnet，并在网页控制台批准设备（如果启用了设备审批）。推荐一次性、非临时、预批准且带专用 tag 的 Auth key；也可首次交互登录。带 tag 节点的密钥到期策略仍应在控制台核对。
+- 管理员能把服务器加入目标 tailnet，并在网页控制台批准设备（如果启用了设备审批）。可首次交互登录，或通过权限为 `0600` 的文件提供一次性 Auth key。另一种无交互方式是为专用 tag 创建仅有 `auth_keys` 权限的 OAuth 客户端，把客户端 secret 放入同一凭据文件，并设置 `TS_ADVERTISE_TAGS`。带 tag 节点的密钥到期策略仍应在控制台核对。
 
 当前固定版本见 [versions.lock](versions.lock)。`derper` 由服务器从 `tailscale.com/cmd/derper@v<版本>` 构建，**不是 Tailscale 官方提供的 `derper` 二进制包**。Tailscale 系统包与 `derper` 使用相同发布版本；APT 路径会 hold Tailscale 包，DNF 路径将 Tailscale 软件源设为默认禁用，避免系统单独升级 `tailscaled` 造成版本偏离。
 
@@ -35,7 +35,7 @@
 
    `PUBLIC_IPV4` 填实际公网 IPv4，示例地址会被拒绝。`EXPECTED_TAILNET` 是 Tailscale tailnet 名，不是 DERP 域名；可在另一台已入网设备上运行 `tailscale status --json | jq -r '.CurrentTailnet.Name'` 查询。`TS_HOSTNAME` 仅为服务器在 tailnet 中的设备名称。`REGION_ID` 取 900–999 内未占用的值。
 
-2. 准备首次登录。使用 Auth key 时，将密钥以 `0600` 权限放在配置指定的 `/run/derp-bootstrap/auth.key`；成功入网后安装脚本会删除**该默认路径**的文件。不要把密钥值放入配置、命令参数、Git 或长期日志。若选择浏览器交互登录，设 `TS_AUTH_KEY_FILE=""`。
+2. 准备首次登录。使用 Auth key 时，将密钥以 `0600` 权限放在配置指定的 `/run/derp-bootstrap/auth.key`；成功入网后安装脚本会删除**该默认路径**的文件。若使用 OAuth 客户端 secret，先在 tailnet 策略中定义由管理员拥有的专用 tag，再创建仅有 `auth_keys` 权限且限于该 tag 的客户端；在配置中设置 `TS_ADVERTISE_TAGS="tag:你的标签"`。凭据文件可保存 `tskey-client-…?ephemeral=false&preauthorized=true`，使服务器保留持久身份并跳过设备手动批准。不要把凭据值放入配置、命令参数、Git 或长期日志。若选择浏览器交互登录，设 `TS_AUTH_KEY_FILE=""`。
 
 3. 先检查，再安装：
 
@@ -73,7 +73,7 @@
 Docker 入口见 [docker/deploy.sh](docker/deploy.sh)。缺少 Docker 时按上表安装；Rocky Linux 和 AlmaLinux 需要先提供 Docker Engine 与 Compose v2。镜像从锁定版本的官方 Tailscale 镜像复制 `tailscale`/`tailscaled`，并从同版本的 `tailscale.com/cmd/derper` 构建官方 `derper`。容器使用 Tailscale userspace 模式，不需要主机安装 Tailscale、`/dev/net/tun` 或 privileged 模式。Docker 路径和裸机路径不要同时绑定同一组公网端口。
 
 1. 将仓库放到 VPS，复制并编辑 `docker/config.example.env` 为 `docker/config.env`。配置公网 IP、证书邮箱、目标 tailnet、设备名和未占用的 RegionID。示例使用 TCP 52625、UDP 3478；公网 TCP 80 用于 HTTP-01 签发和续期。云安全组和宿主机防火墙需允许这三个入站端口并保留 SSH。该方案不监听 TCP 443，也不提供 DERP 节点的 80 端口 captive portal 检测服务。
-2. 交互登录设 `AUTH_MODE="interactive"`；运行 `sudo bash docker/deploy.sh install docker/config.env` 后，用 `sudo bash docker/deploy.sh logs docker/config.env` 查看登录 URL 并批准设备。全自动登录设 `AUTH_MODE="authkey"`，把一次性、非临时 Auth key 放到 `docker/secrets/auth.key`，权限为 `0600`。安装脚本只检查文件，不把密钥放到环境变量或 Docker 元数据；容器成功入网后删除该文件。已入网的节点重启时会从 `docker/state/tailscale` 恢复身份，不再需要密钥。
+2. 交互登录设 `AUTH_MODE="interactive"`；运行 `sudo bash docker/deploy.sh install docker/config.env` 后，用 `sudo bash docker/deploy.sh logs docker/config.env` 查看登录 URL 并批准设备。全自动登录设 `AUTH_MODE="authkey"`，把一次性、非临时 Auth key 或上述 OAuth 客户端 secret 放到 `docker/secrets/auth.key`，权限为 `0600`；OAuth 方式还需在配置中设置 `TS_ADVERTISE_TAGS`。安装脚本只检查文件，不把凭据放到环境变量或 Docker 元数据；容器成功入网后删除该文件。已入网的节点重启时会从 `docker/state/tailscale` 恢复身份，不再需要凭据。
 3. 先运行 `sudo bash docker/deploy.sh preflight docker/config.env`。然后运行 `sudo bash docker/deploy.sh install docker/config.env`；它会在支持的系统缺少 Docker 时安装对应软件包，确保 daemon 和 Compose 可用，随后启动容器。如果本机没有对应镜像，会按需检查并安装 Docker Buildx 再构建；构建需要 Docker Hub、PyPI、Go 模块源和 Debian 软件源可达。可用 `GOPROXY=https://goproxy.cn` 指定 Go 模块镜像，保持 Go checksum database 校验开启。
 4. 如果 VPS 无法访问 Docker Hub，在能访问镜像源的 amd64 构建机上构建并导出镜像，再把归档传到 VPS。以下命令仅为 amd64 VPS 示例；其他架构将 `--platform` 改为对应值：
 
@@ -123,4 +123,4 @@ Docker Compose 在两台新 VPS 上完成交互与无人值守部署、缺失 Do
 
 - [Tailscale 自建 DERP 指南](https://tailscale.com/docs/reference/derp-servers/custom-derp-servers)、[官方 `derper` README](https://github.com/tailscale/tailscale/blob/v1.102.4/cmd/derper/README.md) 与 [证书加载源码](https://github.com/tailscale/tailscale/blob/v1.102.4/cmd/derper/cert.go)。
 - [Let's Encrypt IP 地址证书公告](https://letsencrypt.org/2026/01/15/6day-and-ip-general-availability)、[Certbot IP 证书说明](https://letsencrypt.org/2026/03/11/shorter-certs-certbot)、[Certbot 续期钩子文档](https://eff-certbot.readthedocs.io/en/stable/using.html#renewing-certificates)。
-- [Tailscale 官方软件源](https://pkgs.tailscale.com/stable/)、[Docker 官方安装文档](https://docs.docker.com/engine/install/) 与 [Go 官方下载校验值](https://go.dev/dl/?mode=json)。
+- [Tailscale 官方软件源](https://pkgs.tailscale.com/stable/)、[OAuth 客户端注册节点说明](https://tailscale.com/docs/features/oauth-clients)、[Docker 官方安装文档](https://docs.docker.com/engine/install/) 与 [Go 官方下载校验值](https://go.dev/dl/?mode=json)。
