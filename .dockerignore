@@ -1,0 +1,7 @@
+*
+!docker/
+!docker/Dockerfile
+!docker/entrypoint.sh
+!docker/healthcheck.sh
+!lib/
+!lib/common.sh

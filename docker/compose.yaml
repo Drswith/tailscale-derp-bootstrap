@@ -1,0 +1,44 @@
+name: derp-bootstrap
+
+services:
+  derp:
+    image: derp-bootstrap:${TAILSCALE_VERSION:?TAILSCALE_VERSION is required}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION:?GO_VERSION is required}
+        TAILSCALE_VERSION: ${TAILSCALE_VERSION:?TAILSCALE_VERSION is required}
+        CERTBOT_VERSION: ${CERTBOT_VERSION:?CERTBOT_VERSION is required}
+        GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
+    init: true
+    restart: unless-stopped
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    ports:
+      - "0.0.0.0:80:80/tcp"
+      - "0.0.0.0:${DERP_PORT:?DERP_PORT is required}:${DERP_PORT}/tcp"
+      - "0.0.0.0:${STUN_PORT:?STUN_PORT is required}:${STUN_PORT}/udp"
+    environment:
+      PUBLIC_IPV4: ${PUBLIC_IPV4:?PUBLIC_IPV4 is required}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+      EXPECTED_TAILNET: ${EXPECTED_TAILNET:?EXPECTED_TAILNET is required}
+      TS_HOSTNAME: ${TS_HOSTNAME:?TS_HOSTNAME is required}
+      AUTH_MODE: ${AUTH_MODE:?AUTH_MODE is required}
+      DERP_PORT: ${DERP_PORT}
+      STUN_PORT: ${STUN_PORT}
+      REGION_ID: ${REGION_ID:?REGION_ID is required}
+      REGION_CODE: ${REGION_CODE:?REGION_CODE is required}
+      REGION_NAME: ${REGION_NAME:?REGION_NAME is required}
+    volumes:
+      - ./state/tailscale:/var/lib/tailscale
+      - ./state/letsencrypt:/etc/letsencrypt
+      - ./state/derper:/var/lib/derper
+      - ./secrets:/run/derp-secrets
+    healthcheck:
+      test: [CMD, /usr/local/bin/derp-container-healthcheck]
+      interval: 1m
+      timeout: 20s
+      start_period: 15m
+      retries: 3
