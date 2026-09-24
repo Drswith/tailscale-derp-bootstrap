@@ -6,14 +6,7 @@
 
 ## 在 VPS 上获取完整项目
 
-本项目包含脚本、`lib/`、`docker/` 和版本锁定文件，不能只下载 `install.sh` 或 `docker/deploy.sh` 后运行。当前部署实现位于[待合并的 PR #1](https://github.com/Drswith/tailscale-derp-bootstrap/pull/1)；合并前，在 VPS 上复制：
-
-```bash
-git clone --depth 1 --branch codex/mainstream-distro-support https://github.com/Drswith/tailscale-derp-bootstrap.git
-cd tailscale-derp-bootstrap
-```
-
-PR 合并后，改用默认分支：
+本项目包含脚本、`lib/`、`docker/` 和版本锁定文件，不能只下载 `install.sh` 或 `docker/deploy.sh` 后运行。在 VPS 上复制：
 
 ```bash
 git clone --depth 1 https://github.com/Drswith/tailscale-derp-bootstrap.git
@@ -98,7 +91,7 @@ sudo bash docker/deploy.sh derpmap docker/config.env
 ```text
 请帮我部署并验证 https://github.com/Drswith/tailscale-derp-bootstrap 的 Tailscale DERP 服务。
 
-先获取完整仓库，不要只下载单个脚本。确认默认分支是否已包含 install.sh、lib/ 和 docker/；如果 PR #1 尚未合并，使用 codex/mainstream-distro-support 分支。阅读当前 README.md、AGENTS.md、对应的 docs/deployment/ 指南、配置示例及 versions.lock；若你的环境已安装本项目 Skill，也按需使用。
+先获取完整仓库，不要只下载单个脚本。阅读当前 README.md、AGENTS.md、对应的 docs/deployment/ 指南、配置示例及 versions.lock；若你的环境已安装本项目 Skill，也按需使用。
 
 请一次性询问我尚未提供的 SSH 目标与登录方式、公网 IPv4、证书邮箱、tailnet 名称、设备名、未占用的 DERP Region ID、裸机或 Docker 模式、交互或无人值守入网方式。默认规划 DERP TCP 52625、STUN UDP 3478，并保留 SSH；DERP 不使用 TCP 80、443、8080。当前 Let's Encrypt IP 证书仍要求公网 TCP 80 用于 HTTP-01 签发与续期，不能把验证端口改为 52625；如云服务商禁止 TCP 80，先说明此方案的限制。密钥只放目标机权限为 0600 的凭据文件，不要让我在聊天、命令参数或 Git 中粘贴密钥。配置文件由 shell 加载，只写入可信数据。
 
@@ -116,7 +109,7 @@ sudo bash docker/deploy.sh derpmap docker/config.env
 - [兼容性与验收](docs/verification.md)：支持矩阵、自动化测试范围及历史实机记录
 - [AGENTS.md](AGENTS.md)：仓库协作规则；[项目 Skill](.agents/skills/tailscale-derp-bootstrap/SKILL.md)：供兼容 Agent Skills 的工具按需加载
 
-可用 [skills.sh CLI](https://www.skills.sh/docs/cli) 发现本地 Skill：`npx skills add . --list`。仓库包含该 Skill 的公开版本后，可用 `npx skills add Drswith/tailscale-derp-bootstrap --skill tailscale-derp-bootstrap -a codex -g` 安装到 Codex；之后用 `npx skills update tailscale-derp-bootstrap -g` 更新，或用 `npx skills remove --global tailscale-derp-bootstrap` 移除。
+可用 [skills.sh CLI](https://www.skills.sh/docs/cli) 发现本地 Skill：`npx skills add . --list`；从 GitHub 安装到 Codex：`npx skills add Drswith/tailscale-derp-bootstrap --skill tailscale-derp-bootstrap -a codex -g`。之后用 `npx skills update tailscale-derp-bootstrap -g` 更新，或用 `npx skills remove --global tailscale-derp-bootstrap` 移除。
 
 ## 上游资料
 
