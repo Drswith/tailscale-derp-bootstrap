@@ -26,6 +26,13 @@ go.work.sum
 
 # env file
 .env
+config.env
+docker/secrets/
+docker/state/
+*.key
+*.pem
+*.crt
+*.csr
 
 # Editor/IDE
 # .idea/

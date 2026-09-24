@@ -1,0 +1,8 @@
+[Unit]
+Description=Renew public IP certificate for Tailscale DERP
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/derp-bootstrap/renew

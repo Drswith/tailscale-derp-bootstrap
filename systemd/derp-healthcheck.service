@@ -1,0 +1,6 @@
+[Unit]
+Description=Check Tailscale DERP identity and served certificate
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/derp-bootstrap/healthcheck
