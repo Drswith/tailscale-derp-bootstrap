@@ -124,7 +124,10 @@ install_base_packages() {
     apt-get install -y ca-certificates curl git jq openssl python3 python3-venv \
       iproute2 tar util-linux
   else
-    local -a packages=(ca-certificates curl git jq openssl python3 iproute tar util-linux)
+    local -a packages=(ca-certificates git jq openssl python3 iproute tar util-linux)
+    # RHEL-family minimal images often ship curl-minimal, which provides the
+    # HTTPS CLI but conflicts with the full curl RPM.
+    command -v curl >/dev/null 2>&1 || packages+=(curl)
     if [[ $PYTHON_BIN == python3.11 ]]; then
       packages+=(python3.11 python3.11-pip)
     else
@@ -182,7 +185,9 @@ installed_tailscale_version() {
   if [[ $PKG_FAMILY == apt ]]; then
     dpkg-query -W -f='${Version}' tailscale 2>/dev/null || true
   else
-    rpm -q --qf '%{VERSION}' tailscale 2>/dev/null || true
+    if rpm -q --quiet tailscale; then
+      rpm -q --qf '%{VERSION}' tailscale
+    fi
   fi
 }
 
