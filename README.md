@@ -13,7 +13,7 @@ git clone --depth 1 https://github.com/Drswith/tailscale-derp-bootstrap.git
 cd tailscale-derp-bootstrap
 ```
 
-若 VPS 尚无 Git，Ubuntu/Debian 先运行 `sudo apt-get update && sudo apt-get install -y git`；RHEL/Rocky Linux 先运行 `sudo dnf install -y git`。下文命令都在**仓库根目录**执行。
+若 VPS 尚无 Git，先运行 `sudo apt-get update && sudo apt-get install -y git`。下文命令都在**仓库根目录**执行。
 
 ## 选择部署方式
 
@@ -22,7 +22,7 @@ cd tailscale-derp-bootstrap
 | 裸机 | `sudo bash install.sh install config.env` | systemd；脚本安装 Tailscale、Go、Certbot 和 `derper` | 默认 TCP 52625 |
 | Docker | `sudo bash docker/deploy.sh install docker/config.env` | systemd；Docker Engine 与 Compose v2，支持的系统缺失时可自动补装 | 默认 TCP 52625 |
 
-支持 Ubuntu 22.04/24.04、Debian 12/13、RHEL 9、Rocky Linux 9 的 x86_64 或 aarch64 主机；需要 root 权限、至少 2 GiB 可用磁盘空间，以及可从公网访问的固定 IPv4。Rocky Linux 9 的 Docker 模式需预先安装 Engine 与 Compose v2。完整软件源及验证范围见[兼容性与验收](docs/verification.md)。
+支持 Ubuntu 22.04/24.04、Debian 12/13 的 x86_64 或 aarch64 主机；需要 root 权限、至少 2 GiB 可用磁盘空间，以及可从公网访问的固定 IPv4。完整软件源及验证范围见[兼容性与验收](docs/verification.md)。
 
 两种方式均默认让 DERP 使用 TCP **52625**、STUN 使用 UDP **3478**；DERP 默认不占用常见的 TCP 80、443、8080 端口，并保留 SSH。
 
@@ -102,7 +102,7 @@ sudo bash docker/deploy.sh derpmap docker/config.env
 
 ## 验收与文档
 
-`install.sh check` / `docker/deploy.sh check` 只验证本机或容器状态。完成策略合并后，还需从外部网络验证公网 TLS、UDP STUN，并用真实 tailnet 客户端确认经新增 DERP 区域中继。`bash tests/local.sh` 是本地保护测试；GitHub Actions 的六项发行版矩阵只检查 amd64 包命令与构建，不能代替整机部署。[四台 Ubuntu 24.04 VPS 的复测](docs/validation/live-validation-mainstream.md)逐项记录了新装、状态复用、真实中继及普通 Auth key 的未解决故障。
+`install.sh check` / `docker/deploy.sh check` 只验证本机或容器状态。完成策略合并后，还需从外部网络验证公网 TLS、UDP STUN，并用真实 tailnet 客户端确认经新增 DERP 区域中继。`bash tests/local.sh` 是本地保护测试；GitHub Actions 的四项发行版矩阵只检查 amd64 包命令与构建，不能代替整机部署。[四台 Ubuntu 24.04 VPS 的复测](docs/validation/live-validation-mainstream.md)逐项记录了新装、状态复用、真实中继及普通 Auth key 的未解决故障。
 
 - [裸机部署](docs/deployment/bare-metal.md) · [Docker 部署](docs/deployment/docker.md)：准备、安装、登录和首次验收
 - [运维与故障排查](docs/operations.md)：续期、重启、升级和网络诊断

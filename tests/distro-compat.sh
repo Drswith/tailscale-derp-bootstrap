@@ -30,25 +30,17 @@ install_certbot
   || die "Installed Certbot version does not match versions.lock."
 
 source "$ROOT_DIR/docker/deploy.sh"
-if [[ $DOCKER_AUTO_INSTALL == manual ]]; then
-  if output=$(install_docker_engine 2>&1); then
-    die "Docker was auto-installed on a distribution that requires a manual Engine installation."
-  fi
-  [[ $output == *"Install Docker Engine and Compose v2 for"* ]] \
-    || die "The manual Docker prerequisite produced an unexpected error."
-else
-  install_docker_engine
-  if [[ $DOCKER_AUTO_INSTALL == ubuntu ]]; then
-    install_docker_plugin buildx
-  fi
-  docker --version
-  docker compose version
-  docker buildx version
-  docker compose --project-directory "$ROOT_DIR/docker" \
-    --env-file "$ROOT_DIR/versions.lock" \
-    --env-file "$ROOT_DIR/docker/config.example.env" \
-    -f "$ROOT_DIR/docker/compose.yaml" config --quiet
+install_docker_engine
+if [[ $PKG_OS == ubuntu ]]; then
+  install_docker_plugin buildx
 fi
+docker --version
+docker compose version
+docker buildx version
+docker compose --project-directory "$ROOT_DIR/docker" \
+  --env-file "$ROOT_DIR/versions.lock" \
+  --env-file "$ROOT_DIR/docker/config.example.env" \
+  -f "$ROOT_DIR/docker/compose.yaml" config --quiet
 
 bash "$ROOT_DIR/tests/local.sh"
 printf 'Compatibility commands and derper build passed on %s %s.\n' \
