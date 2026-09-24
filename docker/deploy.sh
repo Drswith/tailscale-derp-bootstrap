@@ -104,7 +104,7 @@ install_docker_engine() {
       setup_docker_debian_repo
       apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       ;;
-    fedora|rhel)
+    rhel)
       log "Installing Docker Engine and Compose from Docker's $DOCKER_AUTO_INSTALL repository."
       setup_docker_rpm_repo
       dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
