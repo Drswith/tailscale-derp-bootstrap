@@ -116,10 +116,12 @@ install_docker_plugin() {
   local plugin=$1 package
   package=$(docker_plugin_package "$plugin")
   if [[ $PKG_FAMILY == apt ]]; then
+    if [[ $PKG_OS == debian ]]; then setup_docker_debian_repo; fi
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get install -y "$package"
   else
+    setup_docker_centos_repo
     dnf install -y "$package"
   fi
 }

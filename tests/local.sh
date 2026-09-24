@@ -6,7 +6,8 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 for script in "$ROOT_DIR"/install.sh "$ROOT_DIR"/lib/*.sh \
-  "$ROOT_DIR"/runtime/*.sh "$ROOT_DIR"/hooks/*.sh "$ROOT_DIR"/docker/*.sh; do
+  "$ROOT_DIR"/runtime/*.sh "$ROOT_DIR"/hooks/*.sh "$ROOT_DIR"/docker/*.sh \
+  "$ROOT_DIR"/tests/*.sh; do
   bash -n "$script"
 done
 
