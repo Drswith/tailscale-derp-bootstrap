@@ -1,0 +1,19 @@
+[Unit]
+Description=Tailscale DERP relay (IP certificate, verified clients)
+Wants=network-online.target tailscaled.service
+After=network-online.target tailscaled.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/derp-bootstrap/run-derper
+Restart=on-failure
+RestartSec=10s
+LimitNOFILE=65536
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/derper
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

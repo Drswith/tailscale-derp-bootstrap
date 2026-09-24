@@ -1,0 +1,10 @@
+[Unit]
+Description=Hourly Tailscale DERP health check
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=1h
+Unit=derp-healthcheck.service
+
+[Install]
+WantedBy=timers.target
