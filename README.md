@@ -24,14 +24,18 @@ cd tailscale-derp-bootstrap
 
 ## 选择部署方式
 
-| 方式 | 安装命令 | 宿主机要求 | 示例 DERP 端口 |
+| 方式 | 安装命令 | 宿主机要求 | 默认 DERP TCP 端口 |
 | --- | --- | --- | --- |
-| 裸机 | `sudo bash install.sh install config.env` | systemd；脚本安装 Tailscale、Go、Certbot 和 `derper` | 示例配置默认 TCP 443 |
-| Docker | `sudo bash docker/deploy.sh install docker/config.env` | systemd；Docker Engine 与 Compose v2，支持的系统缺失时可自动补装 | 示例配置默认 TCP 52625 |
+| 裸机 | `sudo bash install.sh install config.env` | systemd；脚本安装 Tailscale、Go、Certbot 和 `derper` | 默认 TCP 52625 |
+| Docker | `sudo bash docker/deploy.sh install docker/config.env` | systemd；Docker Engine 与 Compose v2，支持的系统缺失时可自动补装 | 默认 TCP 52625 |
 
 支持 Ubuntu 22.04/24.04、Debian 12/13、RHEL 9、Rocky Linux 9 的 x86_64 或 aarch64 主机；需要 root 权限、至少 2 GiB 可用磁盘空间，以及可从公网访问的固定 IPv4。Rocky Linux 9 的 Docker 模式需预先安装 Engine 与 Compose v2。完整软件源及验证范围见[兼容性与验收](docs/verification.md)。
 
-两种方式都需要公网 TCP **80** 签发和续期证书、配置的 TCP DERP 端口、配置的 UDP STUN 端口（示例为 3478），并保留 SSH。若不使用 443，请在裸机配置中明确设置 `DERP_PORT="52625"`。TCP 80 不能改成其他公网端口；本方案关闭 `derper` 自带的 80 端口 HTTP 服务。
+两种方式均默认让 DERP 使用 TCP **52625**、STUN 使用 UDP **3478**；DERP 默认不占用常见的 TCP 80、443、8080 端口，并保留 SSH。
+
+当前无域名的公网 IP 证书使用 [Let's Encrypt HTTP-01](https://letsencrypt.org/docs/challenge-types/)，**签发和自动续期仍要求公网 TCP 80 可达**，不能将验证端口改为 52625。`derper` 自带的 80 端口 HTTP 服务已关闭，Certbot 只在验证时监听 80；Docker Compose 为支持自动续期仍会持续发布宿主机 80 端口映射。若云服务商不允许公网 80，本项目当前的自动签证方案无法工作，单改 `DERP_PORT` 不能解决。
+
+已有部署的配置文件不会随默认值变化自动改端口；从 443 迁移的步骤见[运维说明](docs/operations.md#更改既有-derp-端口)。
 
 管理员还需要准备目标 tailnet 的登录方式，并把脚本打印的 `derpMap` 区域**合并**到现有策略，保留已有区域、grants/ACL、SSH 和 tags。`EXPECTED_TAILNET` 是 tailnet 名称，`REGION_ID` 必须在 900–999 中选一个未占用值。
 
@@ -47,7 +51,7 @@ chmod 600 config.env
 vi config.env
 ```
 
-把示例公网 IP、邮箱、tailnet、节点名称和区域改成实际值。若不使用 443，把 `DERP_PORT` 改为 `52625`。交互登录时设 `TS_AUTH_KEY_FILE=""`；无人值守登录按[裸机部署指南](docs/deployment/bare-metal.md)准备权限为 `0600` 的凭据文件，配置中只填路径。保存后执行：
+把示例公网 IP、邮箱、tailnet、节点名称和区域改成实际值；`DERP_PORT` 已默认为 `52625`。交互登录时设 `TS_AUTH_KEY_FILE=""`；无人值守登录按[裸机部署指南](docs/deployment/bare-metal.md)准备权限为 `0600` 的凭据文件，配置中只填路径。保存后执行：
 
 ```bash
 sudo bash install.sh preflight config.env
@@ -96,7 +100,7 @@ sudo bash docker/deploy.sh derpmap docker/config.env
 
 先获取完整仓库，不要只下载单个脚本。确认默认分支是否已包含 install.sh、lib/ 和 docker/；如果 PR #1 尚未合并，使用 codex/mainstream-distro-support 分支。阅读当前 README.md、AGENTS.md、对应的 docs/deployment/ 指南、配置示例及 versions.lock；若你的环境已安装本项目 Skill，也按需使用。
 
-请一次性询问我尚未提供的 SSH 目标与登录方式、公网 IPv4、证书邮箱、tailnet 名称、设备名、未占用的 DERP Region ID、裸机或 Docker 模式、交互或无人值守入网方式。默认规划 DERP TCP 52625、证书 TCP 80、STUN UDP 3478，并保留 SSH；不要使用 TCP 443。密钥只放目标机权限为 0600 的凭据文件，不要让我在聊天、命令参数或 Git 中粘贴密钥。配置文件由 shell 加载，只写入可信数据。
+请一次性询问我尚未提供的 SSH 目标与登录方式、公网 IPv4、证书邮箱、tailnet 名称、设备名、未占用的 DERP Region ID、裸机或 Docker 模式、交互或无人值守入网方式。默认规划 DERP TCP 52625、STUN UDP 3478，并保留 SSH；DERP 不使用 TCP 80、443、8080。当前 Let's Encrypt IP 证书仍要求公网 TCP 80 用于 HTTP-01 签发与续期，不能把验证端口改为 52625；如云服务商禁止 TCP 80，先说明此方案的限制。密钥只放目标机权限为 0600 的凭据文件，不要让我在聊天、命令参数或 Git 中粘贴密钥。配置文件由 shell 加载，只写入可信数据。
 
 在目标 VPS 上确认系统支持范围、架构、磁盘、端口和云安全组；从仓库根目录复制并编辑对应 config.example.env，然后运行相应入口的 preflight、install、check、derpmap。交互登录需要我在网页完成授权时，把登录 URL 告诉我并等待完成；Docker 模式从 logs 获取 URL。若国内网络下载失败，分别检查直连、当前代理及对应客户端的可达性，再按需配置代理或镜像，不要把临时代理地址写进仓库。
 

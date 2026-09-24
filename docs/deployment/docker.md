@@ -8,7 +8,7 @@
 
 宿主机须在[支持范围](../verification.md)，并有固定公网 IPv4。Docker Engine、Compose v2 缺失时，脚本在 Ubuntu 使用系统 `docker.io`/`docker-compose-v2`，在 Debian 与 RHEL 9 使用 Docker 官方软件源自动安装；Rocky Linux 9 需预先安装可用的 Engine 与 Compose v2。仅当需要在本机构建镜像且缺 Buildx 时，脚本才补装 Buildx。现有 Docker daemon 不可用时，脚本会尝试通过 systemd 恢复服务和 socket。
 
-放行公网 TCP 80（证书）、配置的 DERP TCP 端口及 UDP STUN 端口，保留 SSH。示例配置使用 TCP 52625、UDP 3478，**不监听 TCP 443**。两种部署方式不能同时绑定相同端口。Docker 镜像构建需要 Docker Hub、Debian 软件源、PyPI 和 Go 模块源可达；VPS 在中国大陆时先分别测试直连与代理路径。
+默认 DERP 使用 TCP 52625、STUN 使用 UDP 3478，保留 SSH；DERP 不监听 TCP 80、443、8080。证书的 HTTP-01 验证仍需公网 TCP 80 可达，Compose 会持续发布宿主机 80 端口映射，但容器内 Certbot 仅在签发与续期时监听 80。两种部署方式不能同时绑定相同端口。Docker 镜像构建需要 Docker Hub、Debian 软件源、PyPI 和 Go 模块源可达；VPS 在中国大陆时先分别测试直连与代理路径。
 
 ## 配置与登录
 

@@ -51,6 +51,12 @@ fi
 
 sed 's/203\.0\.113\.10/1.1.1.1/' "$ROOT_DIR/config.example.env" > "$tmp/config.env"
 python3 -m json.tool <(bash "$ROOT_DIR/install.sh" derpmap "$tmp/config.env") > "$tmp/map.json"
+sed 's/203\.0\.113\.10/1.1.1.1/' "$ROOT_DIR/docker/config.example.env" > "$tmp/docker-config.env"
+python3 -m json.tool <(bash "$ROOT_DIR/docker/deploy.sh" derpmap "$tmp/docker-config.env") > "$tmp/docker-map.json"
+cmp -s "$tmp/map.json" "$tmp/docker-map.json" || {
+  echo 'Native and Docker example configs generated different DERP maps' >&2
+  exit 1
+}
 sed -i.bak 's/EXPECTED_TAILNET="example.com"/EXPECTED_TAILNET="user@example.com"/' "$tmp/config.env"
 bash "$ROOT_DIR/install.sh" derpmap "$tmp/config.env" >/dev/null
 python3 - "$tmp/map.json" <<'PY'
@@ -60,7 +66,16 @@ node = data['Regions']['900']['Nodes'][0]
 assert data['OmitDefaultRegions'] is False
 assert node['HostName'] == node['IPv4'] == '1.1.1.1'
 assert node['IPv6'] == 'none'
+assert node['DERPPort'] == 52625
+assert node['STUNPort'] == 3478
 assert 'CertName' not in node and 'InsecureForTests' not in node
+PY
+sed '/^DERP_PORT=/d' "$tmp/config.env" > "$tmp/config-default-port.env"
+python3 -m json.tool <(env -u DERP_PORT bash "$ROOT_DIR/install.sh" derpmap "$tmp/config-default-port.env") > "$tmp/default-port-map.json"
+python3 - "$tmp/default-port-map.json" <<'PY'
+import json, sys
+node = json.load(open(sys.argv[1]))['derpMap']['Regions']['900']['Nodes'][0]
+assert node['DERPPort'] == 52625
 PY
 if bash "$ROOT_DIR/install.sh" derpmap "$ROOT_DIR/config.example.env" >/dev/null 2>&1; then
   echo 'Reserved example IPv4 was accepted' >&2

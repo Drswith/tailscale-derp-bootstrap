@@ -6,7 +6,7 @@
 
 ## 准备
 
-确认宿主机属于[支持范围](../verification.md)，有 systemd、root 权限、固定且可从公网访问的 IPv4，以及至少 2 GiB 可用磁盘。放行 TCP 80、配置的 DERP TCP 端口和 UDP STUN 端口，并保留 SSH。TCP 80 在签发与续期时必须空闲；云安全组和本机防火墙均需单独检查。
+确认宿主机属于[支持范围](../verification.md)，有 systemd、root 权限、固定且可从公网访问的 IPv4，以及至少 2 GiB 可用磁盘。默认 DERP 使用 TCP 52625、STUN 使用 UDP 3478，不要求开放 TCP 443 或 8080；保留 SSH。公网 TCP 80 仍须在证书签发与续期时可达、空闲，Certbot 仅在验证时监听；云安全组和本机防火墙均需单独检查。
 
 ```bash
 cp config.example.env config.env
@@ -19,7 +19,7 @@ chmod 600 config.env
 | --- | --- |
 | `PUBLIC_IPV4`、`ACME_EMAIL` | 实际公网 IPv4、接收证书通知的邮箱；示例地址会被拒绝 |
 | `EXPECTED_TAILNET`、`TS_HOSTNAME` | 目标 tailnet 名称、该 VPS 的设备名；tailnet 名称不是 DERP 域名 |
-| `DERP_PORT`、`STUN_PORT` | 对外 DERP TCP 与 STUN UDP 端口；示例裸机配置为 443/3478，可将 DERP 改成 52625 |
+| `DERP_PORT`、`STUN_PORT` | 对外 DERP TCP 与 STUN UDP 端口；示例裸机配置默认为 52625/3478 |
 | `REGION_ID`、`REGION_CODE`、`REGION_NAME` | 新区域标识；`REGION_ID` 在 900–999 中选未占用值 |
 | `TS_AUTH_KEY_FILE`、`TS_ADVERTISE_TAGS` | 登录凭据的文件路径及可选的节点 tag，见下文 |
 

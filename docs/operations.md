@@ -27,10 +27,18 @@ sudo bash docker/deploy.sh renew docker/config.env
 
 Docker 的 `docker/state` 必须随容器升级保留。交互登录 URL 与 `docker/secrets/auth.key` 仅用于空白节点状态的首次注册；无交互入网成功后凭据文件会被删除。容器重建不应擦除身份、证书和 `derper` 身份密钥。更换公网 IP 涉及重新签证与修改 DERP 策略；裸机脚本拒绝直接覆盖已有托管 IP 配置，应单独规划迁移。
 
+## 更改既有 DERP 端口
+
+默认端口改为 TCP 52625 仅影响新复制的示例配置和未显式设置 `DERP_PORT` 的配置。已有 `config.env`、`/etc/derp-bootstrap/config.env` 或 `docker/config.env` 若明确写了 443，不会自动迁移。
+
+1. 在维护窗口确认 TCP 52625 未被占用，并在云安全组及宿主机防火墙放行它；保留证书验证所需的 TCP 80、STUN UDP 3478 与 SSH。
+2. 将当前部署所用配置的 `DERP_PORT` 改为 `52625`。裸机重新运行 `sudo bash install.sh install config.env`；Docker 重新运行 `sudo bash docker/deploy.sh install docker/config.env`。
+3. 用对应的 `check`、`derpmap` 验证，合并更新后的区域配置，并从真实客户端确认经新端口中继。确认生效后再关闭旧的 TCP 443 入站规则；切换期间该区域可能短暂不可用。
+
 ## 网络和证书问题
 
 - **下载失败**：先检查本机代理状态、实际端口、hosts 与直连路径，再分别测试 Tailscale 软件源、Docker Hub、Go 下载/模块源、PyPI 和 ACME。只在所需公网请求上配置代理；`NO_PROXY` 排除内网、LAN 与服务发现地址。不要把临时代理端口、密码或令牌写进仓库。Go 模块可用可达的 `GOPROXY`，但保持 `GOSUMDB`；`GO_ARCHIVE_URL` 必须仍通过 `versions.lock` 的 SHA-256 校验。`sudo` 可能清除代理环境变量。
-- **证书申请失败**：TCP 80 必须在首次申请与续期时从公网到达并保持空闲。Certbot 的本地监听端口改成其他数字不能替代 HTTP-01 的公网 80。先核对云安全组、宿主机防火墙和 NAT 映射，再看 staging/生产 ACME 错误。
+- **证书申请失败**：TCP 80 必须在首次申请与续期时从公网到达并保持空闲。Certbot 的本地监听端口改成其他数字不能替代 HTTP-01 的公网 80；DERP 改到 52625 也不能替代证书验证。裸机 Certbot 只在验证时监听 80；Docker Compose 为自动续期持续发布宿主机 80 端口映射，但容器内仅在验证时监听。先核对云安全组、宿主机防火墙和 NAT 映射，再看 staging/生产 ACME 错误。
 - **本机健康但客户端不可用**：`check` 不验证云安全组、STUN 回包、控制台策略是否已生效或真实中继路径。从外部检查 TLS/IP SAN 与 UDP STUN，再从真实已认证客户端确认 DERP map 和实际 `tailscale ping` 路径。`--verify-clients` 还要求服务器上的 Tailscale 节点能按策略看到客户端。
 - **误判日志**：官方 `derper` 的 IP `manual` 模式可能打印“Using self-signed certificate”，即使加载了公共 CA 证书；以证书链、IP SAN 和外部 TLS 验证为准。禁用 IPv6 时 `tailscale debug derp` 对 `none` 的连接错误，以及本方案关闭 80 端口 captive portal 检测的提示，不等于 IPv4 DERP 故障。
 - **普通 Auth key 注册失败**：最近复测返回 `invalid key: unable to validate API key`，原因仍未确定；不要把它归因于中国 VPS 网络。可对照[四机复测记录](validation/live-validation-mainstream.md)的证据与已验证的专用 tag OAuth 路径。
