@@ -4,6 +4,13 @@
 
 `install.sh` 在宿主机安装匹配版本的 Tailscale 与官方源码构建的 `derper`，用 Certbot 获取公网 IPv4 证书，并创建 `derper`、证书续期和健康检查的 systemd 单元。配置文件会作为 shell 脚本加载，只使用自己编辑且可信的文件。
 
+先在目标 VPS 上克隆完整仓库；下文命令均在仓库根目录执行：
+
+```bash
+git clone --depth 1 https://github.com/Drswith/tailscale-derp-bootstrap.git
+cd tailscale-derp-bootstrap
+```
+
 ## 准备
 
 确认宿主机属于[支持范围](../verification.md)，有 systemd、root 权限、固定且可从公网访问的 IPv4，以及至少 2 GiB 可用磁盘。默认 DERP 使用 TCP 52625、STUN 使用 UDP 3478，不要求开放 TCP 443 或 8080；保留 SSH。公网 TCP 80 仍须在证书签发与续期时可达、空闲，Certbot 仅在验证时监听；云安全组和本机防火墙均需单独检查。
