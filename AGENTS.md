@@ -6,7 +6,7 @@
 
 - `install.sh`：裸机 systemd 的 `preflight|install|check|derpmap`；`docker/deploy.sh`：Docker 的 `preflight|install|check|renew|derpmap|logs`。
 - `lib/common.sh` 管理配置、证书与身份校验；`lib/platform.sh` 是允许的系统版本及包源映射；`versions.lock` 同时锁定 Tailscale、Go/校验值和 Certbot。
-- `config.example.env` 与 `docker/config.example.env` 是不同的配置入口，默认 DERP 端口分别为 443 与 52625。配置由 shell `source`，只运行可信、由操作者编辑的文件。
+- `config.example.env` 与 `docker/config.example.env` 是不同的配置入口，默认 DERP TCP 端口均为 52625。公网 TCP 80 仅用于当前 IP 证书方案的 HTTP-01 验证，不能用自定义 DERP 端口替代；配置由 shell `source`，只运行可信、由操作者编辑的文件。
 - `README.md` 是项目入口；`docs/deployment/` 是操作步骤；`docs/operations.md` 是维护与排障；`docs/verification.md` 记录支持和验证边界；`docs/validation/` 保存按轮次区分的已脱敏实机证据。
 - `.agents/skills/tailscale-derp-bootstrap/SKILL.md` 是可供 Agent Skills/skills.sh 发现的使用指南。Skill 可被安装到仓库外，不能假设它与项目源码总在同一目录。
 

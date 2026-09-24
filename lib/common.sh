@@ -15,7 +15,7 @@ load_config() {
   : "${ACME_EMAIL:?Set ACME_EMAIL}"
   : "${EXPECTED_TAILNET:?Set EXPECTED_TAILNET}"
   : "${TS_HOSTNAME:?Set TS_HOSTNAME}"
-  : "${DERP_PORT:=443}" "${STUN_PORT:=3478}" "${REGION_ID:=900}"
+  : "${DERP_PORT:=52625}" "${STUN_PORT:=3478}" "${REGION_ID:=900}"
   : "${REGION_CODE:=example-derp}" "${REGION_NAME:=Example DERP}"
   : "${TS_AUTH_KEY_FILE:=}"
   : "${TS_ADVERTISE_TAGS:=}"
