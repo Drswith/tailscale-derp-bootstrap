@@ -53,10 +53,11 @@ sed 's/203\.0\.113\.10/1.1.1.1/' "$ROOT_DIR/config.example.env" > "$tmp/config.e
 python3 -m json.tool <(bash "$ROOT_DIR/install.sh" derpmap "$tmp/config.env") > "$tmp/map.json"
 sed 's/203\.0\.113\.10/1.1.1.1/' "$ROOT_DIR/docker/config.example.env" > "$tmp/docker-config.env"
 python3 -m json.tool <(bash "$ROOT_DIR/docker/deploy.sh" derpmap "$tmp/docker-config.env") > "$tmp/docker-map.json"
-cmp -s "$tmp/map.json" "$tmp/docker-map.json" || {
-  echo 'Native and Docker example configs generated different DERP maps' >&2
-  exit 1
-}
+python3 - "$tmp/map.json" "$tmp/docker-map.json" <<'PY'
+import json, sys
+with open(sys.argv[1]) as native, open(sys.argv[2]) as docker:
+    assert json.load(native) == json.load(docker), 'Native and Docker example configs generated different DERP maps'
+PY
 sed -i.bak 's/EXPECTED_TAILNET="example.com"/EXPECTED_TAILNET="user@example.com"/' "$tmp/config.env"
 bash "$ROOT_DIR/install.sh" derpmap "$tmp/config.env" >/dev/null
 python3 - "$tmp/map.json" <<'PY'
