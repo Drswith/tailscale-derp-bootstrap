@@ -18,6 +18,7 @@ load_config() {
   : "${DERP_PORT:=443}" "${STUN_PORT:=3478}" "${REGION_ID:=900}"
   : "${REGION_CODE:=example-derp}" "${REGION_NAME:=Example DERP}"
   : "${TS_AUTH_KEY_FILE:=}"
+  : "${TS_ADVERTISE_TAGS:=}"
 
   need python3
   python3 - "$PUBLIC_IPV4" <<'PY' || die "PUBLIC_IPV4 must be a globally routable IPv4 address."

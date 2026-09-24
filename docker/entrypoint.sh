@@ -9,7 +9,7 @@ write_config() {
   [[ ! -s /var/lib/tailscale/tailscaled.state ]] || HAD_TAILSCALE_STATE=true
   {
     local name
-    for name in PUBLIC_IPV4 ACME_EMAIL EXPECTED_TAILNET TS_HOSTNAME \
+    for name in PUBLIC_IPV4 ACME_EMAIL EXPECTED_TAILNET TS_HOSTNAME TS_ADVERTISE_TAGS \
       DERP_PORT STUN_PORT REGION_ID REGION_CODE REGION_NAME; do
       printf '%s=%q\n' "$name" "${!name:-}"
     done
@@ -71,14 +71,22 @@ join_tailnet() {
     if [[ $AUTH_MODE == authkey ]]; then
       [[ -f $key && $(stat -c '%a' "$key") == 600 ]] \
         || die "Headless enrollment requires /run/derp-secrets/auth.key (mode 0600)."
-      log "Joining tailnet with a one-use key from a file."
-      tailscale up --auth-key="file:$key" --hostname="$TS_HOSTNAME" \
-        --accept-dns=false --accept-routes=false
+      log "Joining tailnet with a headless credential from a file."
+      local -a up_args=(--auth-key="file:$key" --hostname="$TS_HOSTNAME" \
+        --accept-dns=false --accept-routes=false)
+      if [[ -n $TS_ADVERTISE_TAGS ]]; then
+        up_args+=(--advertise-tags="$TS_ADVERTISE_TAGS")
+      fi
+      tailscale up "${up_args[@]}"
       rm -f -- "$key"
     else
       log "Open the Tailscale login URL printed below and approve the device."
-      tailscale up --hostname="$TS_HOSTNAME" \
-        --accept-dns=false --accept-routes=false
+      local -a up_args=(--hostname="$TS_HOSTNAME" \
+        --accept-dns=false --accept-routes=false)
+      if [[ -n $TS_ADVERTISE_TAGS ]]; then
+        up_args+=(--advertise-tags="$TS_ADVERTISE_TAGS")
+      fi
+      tailscale up "${up_args[@]}"
     fi
   fi
   check_tailnet
