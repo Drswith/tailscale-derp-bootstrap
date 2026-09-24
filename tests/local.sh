@@ -13,34 +13,38 @@ done
 source "$ROOT_DIR/lib/common.sh"
 source "$ROOT_DIR/lib/platform.sh"
 check_platform() {
-  local id=$1 version=$2 codename=$3 repo=$4
-  printf 'ID=%s\nVERSION_ID=%s\nVERSION_CODENAME=%s\nID_LIKE="%s"\n' \
-    "$id" "$version" "$codename" "" > "$tmp/os-release"
+  local id=$1 name=$2 version=$3 codename=$4 family=$5 repo=$6 python=$7
+  printf 'ID=%s\nNAME="%s"\nVERSION_ID=%s\nVERSION_CODENAME=%s\n' \
+    "$id" "$name" "$version" "$codename" > "$tmp/os-release"
   detect_platform "$tmp/os-release"
-  [[ $PKG_OS == "$repo" && $PKG_CODENAME == "$codename" && \
-     $PYTHON_BIN == python3 ]]
+  [[ $PKG_FAMILY == "$family" && $PKG_OS == "$repo" && \
+     $PKG_CODENAME == "$codename" && $PYTHON_BIN == "$python" ]]
 }
-check_platform ubuntu 22.04 jammy ubuntu
-check_platform ubuntu 24.04 noble ubuntu
-check_platform debian 12 bookworm debian
-check_platform debian 13 trixie debian
+check_platform ubuntu Ubuntu 22.04 jammy apt ubuntu python3
+check_platform ubuntu Ubuntu 24.04 noble apt ubuntu python3
+check_platform debian Debian 12 bookworm apt debian python3
+check_platform debian Debian 13 trixie apt debian python3
+check_platform centos 'CentOS Stream' 9 '' dnf centos python3.11
+[[ $PKG_REPO_PATH == centos/9/tailscale.repo ]]
+check_platform centos 'CentOS Stream' 10 '' dnf centos python3
+[[ $PKG_REPO_PATH == centos/10/tailscale.repo ]]
 check_unsupported_platform() {
-  printf 'ID=%s\nVERSION_ID=%s\nVERSION_CODENAME=%s\nID_LIKE="%s"\n' \
-    "$1" "$2" "$3" "$4" > "$tmp/os-release"
+  printf 'ID=%s\nNAME="%s"\nVERSION_ID=%s\nVERSION_CODENAME=%s\nID_LIKE="%s"\n' \
+    "$1" "$2" "$3" "$4" "$5" > "$tmp/os-release"
   if (detect_platform "$tmp/os-release") >/dev/null 2>&1; then
-    echo "Unsupported Linux distribution was accepted: $1 $2" >&2; exit 1
+    echo "Unsupported Linux distribution was accepted: $1 $3" >&2; exit 1
   fi
 }
-check_unsupported_platform ubuntu 20.04 focal debian
-check_unsupported_platform ubuntu 26.04 resolute debian
-check_unsupported_platform linuxmint 22 wilma ubuntu
-check_unsupported_platform fedora 44 '' ''
-check_unsupported_platform rhel 9.6 '' ''
-check_unsupported_platform rhel 10.1 '' ''
-check_unsupported_platform rocky 9.6 '' 'rhel centos fedora'
-check_unsupported_platform rocky 10.1 '' 'rhel centos fedora'
-check_unsupported_platform almalinux 9.6 '' 'rhel centos fedora'
-check_unsupported_platform unknown 1 '' ''
+check_unsupported_platform ubuntu Ubuntu 20.04 focal debian
+check_unsupported_platform ubuntu Ubuntu 26.04 resolute debian
+check_unsupported_platform linuxmint 'Linux Mint' 22 wilma ubuntu
+check_unsupported_platform centos 'CentOS Linux' 9 '' 'rhel fedora'
+check_unsupported_platform centos 'CentOS Stream' 8 '' 'rhel fedora'
+check_unsupported_platform fedora Fedora 44 '' ''
+check_unsupported_platform rhel 'Red Hat Enterprise Linux' 9.6 '' ''
+check_unsupported_platform rocky 'Rocky Linux' 9.6 '' 'rhel centos fedora'
+check_unsupported_platform almalinux 'AlmaLinux' 9.6 '' 'rhel centos fedora'
+check_unsupported_platform unknown Unknown 1 '' ''
 
 if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then
   docker compose --project-directory "$ROOT_DIR/docker" \

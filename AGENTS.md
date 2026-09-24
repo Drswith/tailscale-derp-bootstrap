@@ -20,6 +20,6 @@
 ## 验证与报告
 
 - 对脚本及文档改动运行 `bash tests/local.sh`、`git diff --check`，并检查 Markdown 相对链接。改动 Skill 时运行 skill-creator 的 `quick_validate.py`，并用 `npx skills add . --list` 检查 skills.sh 发现结果。
-- Actions 发行版矩阵只验证 Ubuntu 22.04/24.04、Debian 12/13 的 amd64 容器里的包安装与构建；不得据此声称 systemd、Docker daemon、ACME、公网入口或真实 DERP 中继通过。
+- Actions 发行版矩阵只验证 Ubuntu 22.04/24.04、Debian 12/13、CentOS Stream 9/10 的 amd64 容器里的包安装与构建；不得据此声称 systemd、Docker daemon、ACME、公网入口或真实 DERP 中继通过。
 - 实机结果分开报告安装、服务/证书、公网 TCP/UDP、有效 DERP map、真实认证客户端的 relay/direct 路径。`check` 成功或控制台保存策略，不等于真实中继已验收。
 - 历史记录中的普通 Auth key 成功与 2026-09-24 空白状态复测的失败属于不同轮次；维护文档时保留这个时间边界。

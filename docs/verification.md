@@ -8,8 +8,9 @@
 | --- | --- | --- |
 | Ubuntu 22.04/24.04 | Tailscale 官方 APT 源 | 安装 Ubuntu 的 `docker.io`、`docker-compose-v2`；构建镜像时按需补 Buildx |
 | Debian 12/13 | Tailscale 官方 APT 源 | 添加 Docker 官方 Debian CE 源并安装 Engine、Compose、Buildx |
+| CentOS Stream 9/10 | 对应版本的 [Tailscale 官方 CentOS RPM 源](https://pkgs.tailscale.com/stable/) | 添加 [Docker 官方 CentOS CE 源](https://docs.docker.com/engine/install/centos/)并安装 Engine、Compose、Buildx |
 
-只接受 `/etc/os-release` 映射中的上述版本、x86_64 或 aarch64、systemd 主机。RHEL、Rocky Linux、Fedora、AlmaLinux、Ubuntu 20.04、Linux Mint 和未知系统会被拒绝。当前 amd64 兼容性检查不能推断 aarch64 上的完整部署结果。
+只接受 `/etc/os-release` 映射中的上述版本、x86_64 或 aarch64、systemd 主机。CentOS 只接受 `NAME="CentOS Stream"` 且 `VERSION_ID="9"` 或 `"10"`；CentOS Linux、CentOS Stream 8、RHEL、Rocky Linux、Fedora、AlmaLinux、Ubuntu 20.04、Linux Mint 和未知系统会被拒绝。Stream 9 使用 Python 3.11，Stream 10 使用系统 Python 3.12 运行锁定的 Certbot。Stream 10 的 amd64 宿主机需要 x86-64-v3 指令集。当前 amd64 兼容性检查不能推断 aarch64 上的完整部署结果。
 
 ## 自动化测试验证了什么
 
@@ -19,9 +20,9 @@ bash tests/local.sh
 
 本地测试检查发行版识别、配置和 `derpMap` 生成、证书 IP SAN/私钥/有效期、证书链接，以及脚本语法；本机有 Docker Compose 时还解析配置。
 
-[GitHub Actions 兼容性矩阵](../.github/workflows/test.yml)在 Ubuntu 22.04/24.04、Debian 12/13 的 **linux/amd64 容器**中调用安装器实际函数，安装基础包及锁定的 Tailscale、校验并安装 Go、构建匹配版本的 `derper`、安装锁定的 Certbot，并运行本地测试。四项矩阵还安装 Docker CLI、Compose、Buildx 并解析 Compose 配置；另一个任务构建 Docker 部署镜像并核对其中的二进制版本。[此前六项矩阵与镜像构建通过的运行记录](https://github.com/Drswith/tailscale-derp-bootstrap/actions/runs/35964568794)仅作为历史记录，当前支持范围以本页和最新 CI 为准。
+[GitHub Actions 兼容性矩阵](../.github/workflows/test.yml)在 Ubuntu 22.04/24.04、Debian 12/13、CentOS Stream 9/10 的 **linux/amd64 容器**中调用安装器实际函数，安装基础包及锁定的 Tailscale、校验并安装 Go、构建匹配版本的 `derper`、安装锁定的 Certbot，并运行本地测试。六项矩阵还安装 Docker CLI、Compose、Buildx 并解析 Compose 配置；另一个任务构建 Docker 部署镜像并核对其中的二进制版本。
 
-矩阵容器没有 systemd、Docker daemon、公网入口、ACME 身份或 tailnet 凭据，所以不能证明服务启动、正式签证或客户端中继。
+矩阵容器没有 systemd、Docker daemon、公网入口、ACME 身份或 tailnet 凭据，所以不能证明服务启动、正式签证或客户端中继。CentOS Stream 9/10 尚未在完整宿主机上安装；此前 RHEL/Rocky 的容器测试仅为历史记录，不属于当前支持范围。
 
 ## 整机和外部客户端验收
 

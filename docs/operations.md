@@ -23,7 +23,7 @@ sudo bash docker/deploy.sh renew docker/config.env
 
 `versions.lock` 固定 Tailscale、Go、Certbot 版本以及 Go 归档校验值。`derper` 由 `tailscale.com/cmd/derper@v<版本>` 官方源码构建，并非上游提供的预编译 `derper` 包。升级 Tailscale 时要同步构建对应版本的 `derper`；修改 Go 版本时同步更新官方 SHA-256。
 
-裸机重复运行 `install.sh install` 会复用已在线的 Tailscale 身份和有效证书。锁定的 Tailscale 版本改变后，脚本先构建新 `derper`，配套升级两个组件并健康检查；失败时尝试恢复旧包与旧二进制并报告结果。升级前确认旧版本系统包仍可下载。Certbot 升级会更新独立虚拟环境。APT 会 hold Tailscale 包，避免系统单独升级 `tailscaled`。
+裸机重复运行 `install.sh install` 会复用已在线的 Tailscale 身份和有效证书。锁定的 Tailscale 版本改变后，脚本先构建新 `derper`，配套升级两个组件并健康检查；失败时尝试恢复旧包与旧二进制并报告结果。升级前确认旧版本系统包仍可下载。Certbot 升级会更新独立虚拟环境。APT 会 hold Tailscale 包；CentOS 的 Tailscale RPM 源默认禁用，避免系统单独升级 `tailscaled`。
 
 Docker 的 `docker/state` 必须随容器升级保留。交互登录 URL 与 `docker/secrets/auth.key` 仅用于空白节点状态的首次注册；无交互入网成功后凭据文件会被删除。容器重建不应擦除身份、证书和 `derper` 身份密钥。更换公网 IP 涉及重新签证与修改 DERP 策略；裸机脚本拒绝直接覆盖已有托管 IP 配置，应单独规划迁移。
 
