@@ -7,7 +7,7 @@ on:
 
 jobs:
   distro:
-    name: ${{ matrix.name }} package and build checks
+    name: ${{ matrix.name }} compatibility checks
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -22,7 +22,7 @@ jobs:
           - { name: Fedora 43, image: 'fedora:43', id: fedora, major: '43' }
           - { name: Fedora 44, image: 'fedora:44', id: fedora, major: '44' }
           - { name: RHEL UBI 9, image: 'registry.access.redhat.com/ubi9/ubi:latest', id: rhel, major: '9' }
-          - { name: RHEL UBI 10, image: 'registry.access.redhat.com/ubi10/ubi:latest', id: rhel, major: '10' }
+          - { name: RHEL UBI 10, image: 'registry.access.redhat.com/ubi10/ubi:latest', id: rhel, major: '10', package_mode: metadata }
           - { name: Rocky Linux 9, image: 'rockylinux/rockylinux:9', id: rocky, major: '9' }
           - { name: Rocky Linux 10, image: 'rockylinux/rockylinux:10', id: rocky, major: '10' }
           - { name: AlmaLinux 9, image: 'almalinux:9', id: almalinux, major: '9' }
@@ -35,9 +35,10 @@ jobs:
           DISTRO_IMAGE: ${{ matrix.image }}
           EXPECTED_ID: ${{ matrix.id }}
           EXPECTED_MAJOR: ${{ matrix.major }}
+          PACKAGE_MODE: ${{ matrix.package_mode }}
         run: |
           docker run --rm --platform linux/amd64 \
-            --env EXPECTED_ID --env EXPECTED_MAJOR \
+            --env EXPECTED_ID --env EXPECTED_MAJOR --env PACKAGE_MODE \
             --volume "$GITHUB_WORKSPACE:/src:ro" --workdir /src \
             "$DISTRO_IMAGE" bash tests/distro-compat.sh
 
