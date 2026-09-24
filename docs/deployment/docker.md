@@ -4,6 +4,13 @@
 
 `docker/deploy.sh` 在容器中运行 Tailscale、官方源码构建的 `derper` 和 Certbot。Tailscale 使用 userspace 模式，宿主机无需安装 Tailscale、提供 `/dev/net/tun` 或授予 privileged 权限。宿主机需要 systemd 来启动 Docker Engine；配置文件会作为 shell 脚本加载，只使用自己编辑且可信的文件。
 
+先在目标 VPS 上克隆完整仓库；下文命令均在仓库根目录执行：
+
+```bash
+git clone --depth 1 https://github.com/Drswith/tailscale-derp-bootstrap.git
+cd tailscale-derp-bootstrap
+```
+
 ## 宿主机和网络
 
 宿主机须在[支持范围](../verification.md)，并有固定公网 IPv4。Docker Engine、Compose v2 缺失时，脚本在 Ubuntu 使用系统 `docker.io`/`docker-compose-v2`，在 Debian 与 CentOS Stream 9/10 使用 Docker 官方软件源自动安装。仅当需要在本机构建镜像且缺 Buildx 时，脚本才补装 Buildx。现有 Docker daemon 不可用时，脚本会尝试通过 systemd 恢复服务和 socket。
