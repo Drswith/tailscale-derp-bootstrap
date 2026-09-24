@@ -74,7 +74,9 @@ EOF
 
 setup_docker_rpm_repo() {
   need dnf
-  dnf install -y ca-certificates curl
+  local -a packages=(ca-certificates)
+  command -v curl >/dev/null 2>&1 || packages+=(curl)
+  dnf install -y "${packages[@]}"
   local tmp
   tmp=$(mktemp)
   curl -fsSL "https://download.docker.com/linux/$DOCKER_AUTO_INSTALL/docker-ce.repo" -o "$tmp"
