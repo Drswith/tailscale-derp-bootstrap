@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 : "${EXPECTED_ID:?Set EXPECTED_ID for the container image}"
 : "${EXPECTED_MAJOR:?Set EXPECTED_MAJOR for the container image}"
+: "${EXPECTED_ARCH:=amd64}"
 
 # Source the same functions used by the installer. This container deliberately has
 # no systemd, Docker daemon, tailnet credentials, public listener or ACME account.
@@ -12,9 +13,11 @@ load_versions
 detect_platform
 [[ $PLATFORM_ID == "$EXPECTED_ID" && ${PLATFORM_VERSION%%.*} == "$EXPECTED_MAJOR" ]] \
   || die "Unexpected image OS: $PLATFORM_ID $PLATFORM_VERSION"
-[[ $(uname -m) == x86_64 ]] || die "The compatibility matrix expects linux/amd64."
-GO_ARCH=amd64
-GO_SHA256=$GO_LINUX_AMD64_SHA256
+case "$EXPECTED_ARCH:$(uname -m)" in
+  amd64:x86_64) GO_ARCH=amd64; GO_SHA256=$GO_LINUX_AMD64_SHA256 ;;
+  arm64:aarch64) GO_ARCH=arm64; GO_SHA256=$GO_LINUX_ARM64_SHA256 ;;
+  *) die "Container architecture does not match EXPECTED_ARCH=$EXPECTED_ARCH." ;;
+esac
 
 install_base_packages
 setup_tailscale_repo

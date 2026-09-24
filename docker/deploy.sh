@@ -72,6 +72,24 @@ EOF
   apt-get update
 }
 
+setup_docker_centos_repo() {
+  need dnf
+  local -a packages=(ca-certificates)
+  command -v curl >/dev/null 2>&1 || packages+=(curl)
+  dnf install -y "${packages[@]}"
+  local tmp
+  tmp=$(mktemp)
+  curl -fsSL https://download.docker.com/linux/centos/docker-ce.repo -o "$tmp"
+  grep -qx '\[docker-ce-stable\]' "$tmp" || die "Unexpected Docker RPM repository definition."
+  if [[ -e /etc/yum.repos.d/docker-ce.repo ]] && \
+     ! cmp -s "$tmp" /etc/yum.repos.d/docker-ce.repo; then
+    rm -f "$tmp"
+    die "Existing Docker RPM source differs; inspect it before replacing."
+  fi
+  install -D -m 0644 "$tmp" /etc/yum.repos.d/docker-ce.repo
+  rm -f "$tmp"
+}
+
 install_docker_engine() {
   case "$PKG_OS" in
     ubuntu)
@@ -86,15 +104,24 @@ install_docker_engine() {
       setup_docker_debian_repo
       apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       ;;
+    centos)
+      log "Installing Docker Engine and Compose from Docker's CentOS repository."
+      setup_docker_centos_repo
+      dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      ;;
   esac
 }
 
 install_docker_plugin() {
   local plugin=$1 package
   package=$(docker_plugin_package "$plugin")
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update
-  apt-get install -y "$package"
+  if [[ $PKG_FAMILY == apt ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y "$package"
+  else
+    dnf install -y "$package"
+  fi
 }
 
 ensure_docker() {
@@ -172,9 +199,13 @@ main() {
     require_root
     detect_platform
     if ! command -v python3 >/dev/null 2>&1; then
-      export DEBIAN_FRONTEND=noninteractive
-      apt-get update
-      apt-get install -y python3
+      if [[ $PKG_FAMILY == apt ]]; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get install -y python3
+      else
+        dnf install -y python3
+      fi
     fi
   fi
   case "$action" in

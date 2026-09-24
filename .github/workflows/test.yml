@@ -19,6 +19,8 @@ jobs:
           - { name: Ubuntu 24.04, image: 'ubuntu:24.04', id: ubuntu, major: '24' }
           - { name: Debian 12, image: 'debian:12', id: debian, major: '12' }
           - { name: Debian 13, image: 'debian:13', id: debian, major: '13' }
+          - { name: CentOS Stream 9, image: 'quay.io/centos/centos:stream9', id: centos, major: '9' }
+          - { name: CentOS Stream 10, image: 'quay.io/centos/centos:stream10', id: centos, major: '10' }
     steps:
       - uses: actions/checkout@v4
       - name: Run installer commands and build derper in the distribution container

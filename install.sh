@@ -69,7 +69,12 @@ preflight() {
   else
     log "WARNING: ss unavailable; port occupation will be checked after dependencies install."
   fi
-  local url repo_probe="https://pkgs.tailscale.com/stable/$PKG_OS/$PKG_CODENAME.noarmor.gpg"
+  local url repo_probe
+  if [[ $PKG_FAMILY == apt ]]; then
+    repo_probe="https://pkgs.tailscale.com/stable/$PKG_OS/$PKG_CODENAME.noarmor.gpg"
+  else
+    repo_probe="https://pkgs.tailscale.com/stable/$PKG_REPO_PATH"
+  fi
   for url in "$repo_probe" https://pypi.org/simple/certbot/ \
     https://acme-v02.api.letsencrypt.org/directory \
     https://acme-staging-v02.api.letsencrypt.org/directory; do
@@ -113,25 +118,51 @@ preflight() {
 }
 
 install_base_packages() {
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update
-  apt-get install -y ca-certificates curl git jq openssl python3 python3-venv \
-    iproute2 tar util-linux
+  if [[ $PKG_FAMILY == apt ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y ca-certificates curl git jq openssl python3 python3-venv \
+      iproute2 tar util-linux
+  else
+    local -a packages=(ca-certificates git jq openssl iproute tar util-linux)
+    if [[ $PYTHON_BIN == python3.11 ]]; then
+      packages+=(python3.11 python3.11-pip)
+    else
+      packages+=(python3 python3-pip)
+    fi
+    command -v curl >/dev/null 2>&1 || packages+=(curl)
+    dnf install -y "${packages[@]}"
+  fi
 }
 
 setup_tailscale_repo() {
   local base tmp
   tmp=$(mktemp -d)
-  base="https://pkgs.tailscale.com/stable/$PKG_OS/$PKG_CODENAME"
-  curl -fsSL "$base.noarmor.gpg" -o "$tmp/key.gpg"
-  curl -fsSL "$base.tailscale-keyring.list" -o "$tmp/tailscale.list"
-  if [[ -e /etc/apt/sources.list.d/tailscale.list ]] && ! cmp -s "$tmp/tailscale.list" /etc/apt/sources.list.d/tailscale.list; then
-    rm -rf "$tmp"
-    die "Existing Tailscale apt source differs; inspect it before replacing."
+  if [[ $PKG_FAMILY == apt ]]; then
+    base="https://pkgs.tailscale.com/stable/$PKG_OS/$PKG_CODENAME"
+    curl -fsSL "$base.noarmor.gpg" -o "$tmp/key.gpg"
+    curl -fsSL "$base.tailscale-keyring.list" -o "$tmp/tailscale.list"
+    if [[ -e /etc/apt/sources.list.d/tailscale.list ]] && ! cmp -s "$tmp/tailscale.list" /etc/apt/sources.list.d/tailscale.list; then
+      rm -rf "$tmp"
+      die "Existing Tailscale apt source differs; inspect it before replacing."
+    fi
+    install -D -m 0644 "$tmp/key.gpg" /usr/share/keyrings/tailscale-archive-keyring.gpg
+    install -D -m 0644 "$tmp/tailscale.list" /etc/apt/sources.list.d/tailscale.list
+    apt-get update
+  else
+    base="https://pkgs.tailscale.com/stable/$PKG_REPO_PATH"
+    curl -fsSL "$base" -o "$tmp/tailscale.repo"
+    grep -qx '\[tailscale-stable\]' "$tmp/tailscale.repo" \
+      || die "Unexpected Tailscale RPM repository definition."
+    grep -qx 'repo_gpgcheck=1' "$tmp/tailscale.repo" \
+      || die "Tailscale RPM repository signature check is missing."
+    sed -i 's/^enabled=1$/enabled=0/' "$tmp/tailscale.repo"
+    if [[ -e /etc/yum.repos.d/tailscale.repo ]] && ! cmp -s "$tmp/tailscale.repo" /etc/yum.repos.d/tailscale.repo; then
+      rm -rf "$tmp"
+      die "Existing Tailscale RPM source differs; inspect it before replacing."
+    fi
+    install -D -m 0644 "$tmp/tailscale.repo" /etc/yum.repos.d/tailscale.repo
   fi
-  install -D -m 0644 "$tmp/key.gpg" /usr/share/keyrings/tailscale-archive-keyring.gpg
-  install -D -m 0644 "$tmp/tailscale.list" /etc/apt/sources.list.d/tailscale.list
-  apt-get update
   rm -rf "$tmp"
   available_tailscale_version "$TAILSCALE_VERSION" \
     || die "Tailscale package $TAILSCALE_VERSION is unavailable in the stable repository."
@@ -139,23 +170,44 @@ setup_tailscale_repo() {
 
 available_tailscale_version() {
   local version=$1
-  apt-cache madison tailscale | awk -v v="$version" '$3==v {found=1} END {exit !found}'
+  if [[ $PKG_FAMILY == apt ]]; then
+    apt-cache madison tailscale | awk -v v="$version" '$3==v {found=1} END {exit !found}'
+  else
+    dnf -y --disablerepo='*' --enablerepo=tailscale-stable repoquery \
+      --available --qf '%{version}\n' tailscale \
+      | awk -v v="$version" '$0==v {found=1} END {exit !found}'
+  fi
 }
 
 installed_tailscale_version() {
-  dpkg-query -W -f='${Version}' tailscale 2>/dev/null || true
+  if [[ $PKG_FAMILY == apt ]]; then
+    dpkg-query -W -f='${Version}' tailscale 2>/dev/null || true
+  elif rpm -q --quiet tailscale; then
+    rpm -q --qf '%{VERSION}' tailscale
+  fi
 }
 
 install_tailscale_version() {
-  apt-get install -y --allow-downgrades "tailscale=$1"
+  local version=$1 current
+  if [[ $PKG_FAMILY == apt ]]; then
+    apt-get install -y --allow-downgrades "tailscale=$version"
+    return
+  fi
+  current=$(installed_tailscale_version)
+  if [[ -n $current && $current != "$version" && \
+        $(printf '%s\n%s\n' "$current" "$version" | sort -V | sed -n '1p') == "$version" ]]; then
+    dnf --enablerepo=tailscale-stable downgrade -y "tailscale-$version"
+  else
+    dnf --enablerepo=tailscale-stable install -y "tailscale-$version"
+  fi
 }
 
 hold_tailscale_package() {
-  apt-mark hold tailscale >/dev/null
+  [[ $PKG_FAMILY != apt ]] || apt-mark hold tailscale >/dev/null
 }
 
 unhold_tailscale_package() {
-  apt-mark unhold tailscale >/dev/null
+  [[ $PKG_FAMILY != apt ]] || apt-mark unhold tailscale >/dev/null
 }
 
 install_tailscale_package() {
@@ -408,7 +460,7 @@ main() {
     require_root
     load_versions
     read_os
-    need apt-get
+    if [[ $PKG_FAMILY == apt ]]; then need apt-get; else need dnf; fi
     # A minimal cloud image may not yet have Python, curl, OpenSSL or ss.
     if ! command -v python3 >/dev/null || ! command -v curl >/dev/null \
       || ! command -v openssl >/dev/null || ! command -v ss >/dev/null; then
