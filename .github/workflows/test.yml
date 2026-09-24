@@ -1,22 +1,64 @@
-name: Local safeguards
+name: Linux compatibility
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
-  test:
+  distro:
+    name: ${{ matrix.name }} package and build checks
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - { name: Ubuntu 22.04, image: 'ubuntu:22.04', id: ubuntu, major: '22' }
+          - { name: Ubuntu 24.04, image: 'ubuntu:24.04', id: ubuntu, major: '24' }
+          - { name: Debian 12, image: 'debian:12', id: debian, major: '12' }
+          - { name: Debian 13, image: 'debian:13', id: debian, major: '13' }
+          - { name: Fedora 43, image: 'fedora:43', id: fedora, major: '43' }
+          - { name: Fedora 44, image: 'fedora:44', id: fedora, major: '44' }
+          - { name: RHEL UBI 9, image: 'registry.access.redhat.com/ubi9/ubi:latest', id: rhel, major: '9' }
+          - { name: RHEL UBI 10, image: 'registry.access.redhat.com/ubi10/ubi:latest', id: rhel, major: '10' }
+          - { name: Rocky Linux 9, image: 'rockylinux/rockylinux:9', id: rocky, major: '9' }
+          - { name: Rocky Linux 10, image: 'rockylinux/rockylinux:10', id: rocky, major: '10' }
+          - { name: AlmaLinux 9, image: 'almalinux:9', id: almalinux, major: '9' }
+          - { name: AlmaLinux 10, image: 'almalinux:10', id: almalinux, major: '10' }
     steps:
       - uses: actions/checkout@v4
-      - name: Check scripts, DERP map and certificate safeguards
-        run: bash tests/local.sh
-      - name: Build matching official derper on Linux
+      - name: Run installer commands and build derper in the distribution container
+        shell: bash
+        env:
+          DISTRO_IMAGE: ${{ matrix.image }}
+          EXPECTED_ID: ${{ matrix.id }}
+          EXPECTED_MAJOR: ${{ matrix.major }}
+        run: |
+          docker run --rm --platform linux/amd64 \
+            --env EXPECTED_ID --env EXPECTED_MAJOR \
+            --volume "$GITHUB_WORKSPACE:/src:ro" --workdir /src \
+            "$DISTRO_IMAGE" bash tests/distro-compat.sh
+
+  docker-image:
+    name: Build the Docker deployment image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the locked amd64 image and inspect bundled binaries
         shell: bash
         run: |
           source versions.lock
-          mkdir -p "$RUNNER_TEMP/derper-bin"
-          GOBIN="$RUNNER_TEMP/derper-bin" GOTOOLCHAIN="go$GO_VERSION" \
-            go install "tailscale.com/cmd/derper@v$TAILSCALE_VERSION"
-          go version -m "$RUNNER_TEMP/derper-bin/derper" |
-            awk -v v="v$TAILSCALE_VERSION" '$1=="mod" && $2=="tailscale.com" && $3==v {found=1} END {exit !found}'
+          docker build --platform linux/amd64 -f docker/Dockerfile \
+            --build-arg GO_VERSION="$GO_VERSION" \
+            --build-arg TAILSCALE_VERSION="$TAILSCALE_VERSION" \
+            --build-arg CERTBOT_VERSION="$CERTBOT_VERSION" \
+            -t "derp-bootstrap-ci:$TAILSCALE_VERSION" .
+          docker run --rm --entrypoint /usr/local/bin/tailscaled \
+            "derp-bootstrap-ci:$TAILSCALE_VERSION" --version |
+            grep -Fx "$TAILSCALE_VERSION"
+          docker run --rm --entrypoint /usr/local/bin/derper \
+            "derp-bootstrap-ci:$TAILSCALE_VERSION" -version |
+            grep -F "$TAILSCALE_VERSION"
