@@ -4,7 +4,7 @@
 
 ## 代码与文档入口
 
-- `install.sh`：裸机 systemd 的 `preflight|install|check|derpmap`；`docker/deploy.sh`：Docker 的 `preflight|install|check|renew|derpmap|logs`。
+- `bootstrap.sh`：一行引导入口，获取完整项目、生成配置并以本机 `check` 通过为安装完成标准；`install.sh`：裸机 systemd 的 `preflight|install|check|derpmap`；`docker/deploy.sh`：Docker 的 `preflight|install|check|renew|derpmap|logs`。
 - `lib/common.sh` 管理配置、证书与身份校验；`lib/platform.sh` 是允许的系统版本及包源映射；`versions.lock` 同时锁定 Tailscale、Go/校验值和 Certbot。
 - `config.example.env` 与 `docker/config.example.env` 是不同的配置入口，默认 DERP TCP 端口均为 52625。公网 TCP 80 仅用于当前 IP 证书方案的 HTTP-01 验证，不能用自定义 DERP 端口替代；配置由 shell `source`，只运行可信、由操作者编辑的文件。
 - `README.md` 是项目入口；`docs/deployment/` 是操作步骤；`docs/operations.md` 是维护与排障；`docs/verification.md` 记录支持和验证边界；`docs/validation/` 保存按轮次区分的已脱敏实机证据。

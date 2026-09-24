@@ -4,6 +4,20 @@
 
 > 安装会改动服务器的软件包、服务和 Tailscale 节点状态。脚本不会修改云安全组、本机防火墙或 tailnet 策略；这些入口与策略需要管理员单独配置、验收。
 
+## 一行安装服务器
+
+在支持的 VPS 上复制执行下面**整行命令**。需要 `curl`、`sudo` 和可交互的终端；脚本会下载完整项目，询问公网 IPv4、证书邮箱、tailnet、区域、裸机或 Docker 模式及入网方式。密钥在终端隐藏输入，不放进命令参数或配置文件。
+
+```bash
+derp_bootstrap_script=$(mktemp) && curl -fsSL https://raw.githubusercontent.com/Drswith/tailscale-derp-bootstrap/main/bootstrap.sh -o "$derp_bootstrap_script" && sudo bash "$derp_bootstrap_script"
+```
+
+运行前需要固定公网 IPv4，并在云安全组放行证书签发所需的 **TCP 80**、保留 SSH；云厂商若阻断 TCP 80，当前 IP 证书方案无法完成服务器安装。脚本默认 DERP TCP 52625、STUN UDP 3478。交互入网时根据输出的 URL 完成网页登录和可能需要的设备批准；无交互入网可在隐藏提示中输入受限 OAuth 客户端 secret 或 Auth key。完成后脚本执行本机健康检查，保存可合并的 `derpMap` 片段到 `/opt/derp-bootstrap/source/derp-map.json`。
+
+**这条命令的成功标准是服务器安装和本机检查通过。** 后续由管理员或 Agent 放行 DERP TCP 52625、STUN UDP 3478，将新区域合并进现有 tailnet 策略，并从外部网络和真实客户端验证中继；步骤见[兼容性与验收](docs/verification.md)。脚本不会自行修改云安全组、防火墙或 tailnet 策略。
+
+已有完整项目或准备好的可信配置文件可运行 `sudo bash bootstrap.sh --source "$PWD" --mode native --config /path/to/config.env`；Docker 把模式改为 `docker` 并传入 Docker 配置文件。已有仓库的分步操作仍见下文。
+
 ## 在 VPS 上获取完整项目
 
 本项目包含脚本、`lib/`、`docker/` 和版本锁定文件，不能只下载 `install.sh` 或 `docker/deploy.sh` 后运行。在 VPS 上复制：
@@ -34,7 +48,7 @@ cd tailscale-derp-bootstrap
 
 ## 快速开始
 
-先按上文克隆完整仓库，再选择**一种**方式部署；不要让两种方式占用同一组端口。以下命令假设当前目录是 `tailscale-derp-bootstrap`。
+若选择手动部署，先按上文克隆完整仓库，再选择**一种**方式；不要让两种方式占用同一组端口。以下命令假设当前目录是 `tailscale-derp-bootstrap`。
 
 ### 裸机
 
@@ -95,7 +109,7 @@ sudo bash docker/deploy.sh derpmap docker/config.env
 
 请一次性询问我尚未提供的 SSH 目标与登录方式、公网 IPv4、证书邮箱、tailnet 名称、设备名、未占用的 DERP Region ID、裸机或 Docker 模式、交互或无人值守入网方式。默认规划 DERP TCP 52625、STUN UDP 3478，并保留 SSH；DERP 不使用 TCP 80、443、8080。当前 Let's Encrypt IP 证书仍要求公网 TCP 80 用于 HTTP-01 签发与续期，不能把验证端口改为 52625；如云服务商禁止 TCP 80，先说明此方案的限制。密钥只放目标机权限为 0600 的凭据文件，不要让我在聊天、命令参数或 Git 中粘贴密钥。配置文件由 shell 加载，只写入可信数据。
 
-在目标 VPS 上确认系统支持范围、架构、磁盘、端口和云安全组；从仓库根目录复制并编辑对应 config.example.env，然后运行相应入口的 preflight、install、check、derpmap。交互登录需要我在网页完成授权时，把登录 URL 告诉我并等待完成；Docker 模式从 logs 获取 URL。若国内网络下载失败，分别检查直连、当前代理及对应客户端的可达性，再按需配置代理或镜像，不要把临时代理地址写进仓库。
+在目标 VPS 上确认系统支持范围、架构、磁盘、端口和云安全组。需要一行引导时优先使用 README 的 bootstrap.sh 命令；已有配置时可传 --source、--mode、--config。也可从仓库根目录复制并编辑对应 config.example.env，然后运行相应入口的 preflight、install、check、derpmap。交互登录需要我在网页完成授权时，把登录 URL 告诉我并等待完成；Docker 模式从 logs 获取 URL。若国内网络下载失败，分别检查直连、当前代理及对应客户端的可达性，再按需配置代理或镜像，不要把临时代理地址写进仓库。
 
 只将新的 DERP 区域合并进现有 tailnet 策略，保留已有官方区域、grants/ACL、SSH 和 tags；若你没有策略权限，给我可合并的片段和具体操作。最后从外部网络检查公网 TLS 证书的 IP SAN、TCP 和 UDP STUN，并用已认证的真实 tailnet 客户端确认有效 DERP map 和实际中继路径。分别报告安装、服务、证书、公网入口、策略与真实中继的已验证结果及未完成项。
 ```

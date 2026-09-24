@@ -5,11 +5,13 @@ ROOT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-for script in "$ROOT_DIR"/install.sh "$ROOT_DIR"/lib/*.sh \
+for script in "$ROOT_DIR"/bootstrap.sh "$ROOT_DIR"/install.sh "$ROOT_DIR"/lib/*.sh \
   "$ROOT_DIR"/runtime/*.sh "$ROOT_DIR"/hooks/*.sh "$ROOT_DIR"/docker/*.sh \
   "$ROOT_DIR"/tests/*.sh; do
   bash -n "$script"
 done
+
+bash "$ROOT_DIR/tests/bootstrap.sh"
 
 source "$ROOT_DIR/lib/common.sh"
 source "$ROOT_DIR/lib/platform.sh"

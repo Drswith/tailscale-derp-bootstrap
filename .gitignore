@@ -27,6 +27,7 @@ go.work.sum
 # env file
 .env
 config.env
+derp-map.json
 docker/secrets/
 docker/state/
 *.key
