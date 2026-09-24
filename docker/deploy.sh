@@ -33,7 +33,7 @@ docker_ready() {
 
 docker_plugin_package() {
   local plugin=$1
-  if [[ $DOCKER_AUTO_INSTALL == ubuntu ]] && \
+  if [[ $PKG_OS == ubuntu ]] && \
      ! dpkg-query -W -f='${Status}' docker-ce-cli 2>/dev/null | grep -qx 'install ok installed'; then
     if [[ $plugin == compose ]]; then
       printf 'docker-compose-v2\n'
@@ -72,26 +72,8 @@ EOF
   apt-get update
 }
 
-setup_docker_rpm_repo() {
-  need dnf
-  local -a packages=(ca-certificates)
-  command -v curl >/dev/null 2>&1 || packages+=(curl)
-  dnf install -y "${packages[@]}"
-  local tmp
-  tmp=$(mktemp)
-  curl -fsSL "https://download.docker.com/linux/$DOCKER_AUTO_INSTALL/docker-ce.repo" -o "$tmp"
-  grep -qx '\[docker-ce-stable\]' "$tmp" || die "Unexpected Docker RPM repository definition."
-  if [[ -e /etc/yum.repos.d/docker-ce.repo ]] && \
-     ! cmp -s "$tmp" /etc/yum.repos.d/docker-ce.repo; then
-    rm -f "$tmp"
-    die "Existing Docker RPM source differs; inspect it before replacing."
-  fi
-  install -D -m 0644 "$tmp" /etc/yum.repos.d/docker-ce.repo
-  rm -f "$tmp"
-}
-
 install_docker_engine() {
-  case "$DOCKER_AUTO_INSTALL" in
+  case "$PKG_OS" in
     ubuntu)
       need apt-get
       log "Installing Ubuntu's docker.io and docker-compose-v2 packages."
@@ -104,27 +86,15 @@ install_docker_engine() {
       setup_docker_debian_repo
       apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
       ;;
-    rhel)
-      log "Installing Docker Engine and Compose from Docker's $DOCKER_AUTO_INSTALL repository."
-      setup_docker_rpm_repo
-      dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-      ;;
-    *) die "Install Docker Engine and Compose v2 for $PLATFORM_ID $PLATFORM_VERSION, then rerun." ;;
   esac
 }
 
 install_docker_plugin() {
   local plugin=$1 package
-  [[ $DOCKER_AUTO_INSTALL != manual ]] \
-    || die "Install Docker $plugin for $PLATFORM_ID $PLATFORM_VERSION, then rerun."
   package=$(docker_plugin_package "$plugin")
-  if [[ $PKG_FAMILY == apt ]]; then
-    export DEBIAN_FRONTEND=noninteractive
-    apt-get update
-    apt-get install -y "$package"
-  else
-    dnf install -y "$package"
-  fi
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get update
+  apt-get install -y "$package"
 }
 
 ensure_docker() {
@@ -169,7 +139,7 @@ preflight() {
   if docker_ready; then
     log "Docker Engine is running."
   else
-    log "Docker Engine is missing or stopped; install will use the $DOCKER_AUTO_INSTALL path if needed."
+    log "Docker Engine is missing or stopped; install will use the $PKG_OS path if needed."
   fi
   local managed_running=false container_id
   if docker_ready; then
@@ -202,13 +172,9 @@ main() {
     require_root
     detect_platform
     if ! command -v python3 >/dev/null 2>&1; then
-      if [[ $PKG_FAMILY == apt ]]; then
-        export DEBIAN_FRONTEND=noninteractive
-        apt-get update
-        apt-get install -y python3
-      else
-        dnf install -y python3
-      fi
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y python3
     fi
   fi
   case "$action" in
