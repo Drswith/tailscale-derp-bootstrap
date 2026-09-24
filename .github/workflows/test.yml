@@ -1,0 +1,22 @@
+name: Local safeguards
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check scripts, DERP map and certificate safeguards
+        run: bash tests/local.sh
+      - name: Build matching official derper on Linux
+        shell: bash
+        run: |
+          source versions.lock
+          mkdir -p "$RUNNER_TEMP/derper-bin"
+          GOBIN="$RUNNER_TEMP/derper-bin" GOTOOLCHAIN="go$GO_VERSION" \
+            go install "tailscale.com/cmd/derper@v$TAILSCALE_VERSION"
+          go version -m "$RUNNER_TEMP/derper-bin/derper" |
+            awk -v v="v$TAILSCALE_VERSION" '$1=="mod" && $2=="tailscale.com" && $3==v {found=1} END {exit !found}'
