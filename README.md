@@ -4,12 +4,30 @@
 
 > 安装会改动服务器的软件包、服务和 Tailscale 节点状态。脚本不会修改云安全组、本机防火墙或 tailnet 策略；这些入口与策略需要管理员单独配置、验收。
 
+## 在 VPS 上获取完整项目
+
+本项目包含脚本、`lib/`、`docker/` 和版本锁定文件，不能只下载 `install.sh` 或 `docker/deploy.sh` 后运行。当前部署实现位于[待合并的 PR #1](https://github.com/Drswith/tailscale-derp-bootstrap/pull/1)；合并前，在 VPS 上复制：
+
+```bash
+git clone --depth 1 --branch codex/mainstream-distro-support https://github.com/Drswith/tailscale-derp-bootstrap.git
+cd tailscale-derp-bootstrap
+```
+
+PR 合并后，改用默认分支：
+
+```bash
+git clone --depth 1 https://github.com/Drswith/tailscale-derp-bootstrap.git
+cd tailscale-derp-bootstrap
+```
+
+若 VPS 尚无 Git，Ubuntu/Debian 先运行 `sudo apt-get update && sudo apt-get install -y git`；RHEL/Rocky Linux 先运行 `sudo dnf install -y git`。下文命令都在**仓库根目录**执行。
+
 ## 选择部署方式
 
-| 方式 | 入口 | 宿主机要求 | 示例 DERP 端口 |
+| 方式 | 安装命令 | 宿主机要求 | 示例 DERP 端口 |
 | --- | --- | --- | --- |
-| 裸机 | [install.sh](install.sh) | systemd；脚本安装 Tailscale、Go、Certbot 和 `derper` | 示例配置默认 TCP 443 |
-| Docker | [docker/deploy.sh](docker/deploy.sh) | systemd；Docker Engine 与 Compose v2，支持的系统缺失时可自动补装 | 示例配置默认 TCP 52625 |
+| 裸机 | `sudo bash install.sh install config.env` | systemd；脚本安装 Tailscale、Go、Certbot 和 `derper` | 示例配置默认 TCP 443 |
+| Docker | `sudo bash docker/deploy.sh install docker/config.env` | systemd；Docker Engine 与 Compose v2，支持的系统缺失时可自动补装 | 示例配置默认 TCP 52625 |
 
 支持 Ubuntu 22.04/24.04、Debian 12/13、RHEL 9、Rocky Linux 9 的 x86_64 或 aarch64 主机；需要 root 权限、至少 2 GiB 可用磁盘空间，以及可从公网访问的固定 IPv4。Rocky Linux 9 的 Docker 模式需预先安装 Engine 与 Compose v2。完整软件源及验证范围见[兼容性与验收](docs/verification.md)。
 
@@ -19,33 +37,71 @@
 
 ## 快速开始
 
-在目标 VPS 上克隆本仓库，选择**一种**方式部署；不要让两种方式占用同一组端口。先编辑示例配置中的公网 IP、邮箱、tailnet、节点名称、区域和端口。
+先按上文克隆完整仓库，再选择**一种**方式部署；不要让两种方式占用同一组端口。以下命令假设当前目录是 `tailscale-derp-bootstrap`。
 
 ### 裸机
 
 ```bash
 cp config.example.env config.env
 chmod 600 config.env
+vi config.env
+```
+
+把示例公网 IP、邮箱、tailnet、节点名称和区域改成实际值。若不使用 443，把 `DERP_PORT` 改为 `52625`。交互登录时设 `TS_AUTH_KEY_FILE=""`；无人值守登录按[裸机部署指南](docs/deployment/bare-metal.md)准备权限为 `0600` 的凭据文件，配置中只填路径。保存后执行：
+
+```bash
 sudo bash install.sh preflight config.env
 sudo bash install.sh install config.env
+```
+
+完成 Tailscale 登录和需要的设备批准后验收：
+
+```bash
 sudo bash install.sh check config.env
 sudo bash install.sh derpmap config.env
 ```
 
-交互登录时设 `TS_AUTH_KEY_FILE=""`。无人值守入网需要预置权限为 `0600` 的凭据文件；专用 tag 的 OAuth 客户端已在实机复测中验证。认证、网络镜像和完整验收步骤见[裸机部署](docs/deployment/bare-metal.md)。
+专用 tag 的 OAuth 客户端已在实机复测中验证。认证、网络镜像和完整验收步骤见[裸机部署](docs/deployment/bare-metal.md)。
 
 ### Docker Compose
 
 ```bash
 cp docker/config.example.env docker/config.env
 chmod 600 docker/config.env
+vi docker/config.env
+```
+
+把示例公网 IP、邮箱、tailnet、节点名称和区域改成实际值。示例使用 TCP 52625。交互登录保留 `AUTH_MODE="interactive"`；无人值守登录按[Docker 部署指南](docs/deployment/docker.md)配置 `AUTH_MODE="authkey"` 和权限为 `0600` 的凭据文件。保存后执行：
+
+```bash
 sudo bash docker/deploy.sh preflight docker/config.env
 sudo bash docker/deploy.sh install docker/config.env
+```
+
+交互登录时另开终端运行 `sudo bash docker/deploy.sh logs docker/config.env` 获取登录 URL，完成登录和需要的设备批准后按 Ctrl+C 停止跟随日志。然后验收：
+
+```bash
 sudo bash docker/deploy.sh check docker/config.env
 sudo bash docker/deploy.sh derpmap docker/config.env
 ```
 
-示例默认为交互登录；安装后用 `sudo bash docker/deploy.sh logs docker/config.env` 获取登录 URL。无人值守模式设 `AUTH_MODE="authkey"` 并准备凭据文件。缺少 Docker、国内网络无法拉取镜像、离线导入镜像等操作见[Docker 部署](docs/deployment/docker.md)。
+缺少 Docker、国内网络无法拉取镜像、离线导入镜像等操作见[Docker 部署](docs/deployment/docker.md)。
+
+## 复制给 Agent 的任务提示词
+
+将下面整段复制给可以访问 VPS 的 Agent；它会先收集缺少的部署参数，再选择对应模式执行：
+
+```text
+请帮我部署并验证 https://github.com/Drswith/tailscale-derp-bootstrap 的 Tailscale DERP 服务。
+
+先获取完整仓库，不要只下载单个脚本。确认默认分支是否已包含 install.sh、lib/ 和 docker/；如果 PR #1 尚未合并，使用 codex/mainstream-distro-support 分支。阅读当前 README.md、AGENTS.md、对应的 docs/deployment/ 指南、配置示例及 versions.lock；若你的环境已安装本项目 Skill，也按需使用。
+
+请一次性询问我尚未提供的 SSH 目标与登录方式、公网 IPv4、证书邮箱、tailnet 名称、设备名、未占用的 DERP Region ID、裸机或 Docker 模式、交互或无人值守入网方式。默认规划 DERP TCP 52625、证书 TCP 80、STUN UDP 3478，并保留 SSH；不要使用 TCP 443。密钥只放目标机权限为 0600 的凭据文件，不要让我在聊天、命令参数或 Git 中粘贴密钥。配置文件由 shell 加载，只写入可信数据。
+
+在目标 VPS 上确认系统支持范围、架构、磁盘、端口和云安全组；从仓库根目录复制并编辑对应 config.example.env，然后运行相应入口的 preflight、install、check、derpmap。交互登录需要我在网页完成授权时，把登录 URL 告诉我并等待完成；Docker 模式从 logs 获取 URL。若国内网络下载失败，分别检查直连、当前代理及对应客户端的可达性，再按需配置代理或镜像，不要把临时代理地址写进仓库。
+
+只将新的 DERP 区域合并进现有 tailnet 策略，保留已有官方区域、grants/ACL、SSH 和 tags；若你没有策略权限，给我可合并的片段和具体操作。最后从外部网络检查公网 TLS 证书的 IP SAN、TCP 和 UDP STUN，并用已认证的真实 tailnet 客户端确认有效 DERP map 和实际中继路径。分别报告安装、服务、证书、公网入口、策略与真实中继的已验证结果及未完成项。
+```
 
 ## 验收与文档
 
